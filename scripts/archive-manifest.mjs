@@ -52,24 +52,27 @@ const files = [];
 const directories = [];
 const symlinks = [];
 
-async function walk(directory) {
+async function walk(directory, expectedIdentity = null) {
   const directoryBefore = await lstat(directory, { bigint: true });
   if (!directoryBefore.isDirectory() || directoryBefore.isSymbolicLink()) {
     throw new Error(`Archive directory was replaced or is not a real directory: ${directory}`);
+  }
+  if (expectedIdentity && (expectedIdentity.dev !== directoryBefore.dev || expectedIdentity.ino !== directoryBefore.ino)) {
+    throw new Error(`Archive directory was replaced before inventory began; retry with the archive idle: ${directory}`);
   }
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((a, b) => a.name.localeCompare(b.name, 'en'));
   for (const entry of entries) {
     const fullPath = path.join(directory, entry.name);
     if ((output && fullPath === output) || (verifyPath && fullPath === verifyPath)) continue;
-    const info = await lstat(fullPath);
+    const info = await lstat(fullPath, { bigint: true });
     if (info.isSymbolicLink()) {
       symlinks.push(path.relative(root, fullPath).split(path.sep).join('/'));
       continue;
     }
     if (info.isDirectory()) {
       directories.push(path.relative(root, fullPath).split(path.sep).join('/'));
-      await walk(fullPath);
+      await walk(fullPath, info);
       continue;
     }
     if (!info.isFile()) continue;
@@ -171,9 +174,22 @@ if (verifyPath) {
     !path.posix.isAbsolute(item) && !item.includes('\\') &&
     item.split('/').every(part => part !== '' && part !== '.' && part !== '..') &&
     path.posix.normalize(item) === item && !/[\u0000-\u001f]/.test(item));
+  const directoryPaths = validDirectoryEntries ? expected.directories : [];
+  const directorySet = new Set(directoryPaths);
+  const hasAllParents = itemPath => {
+    const parts = itemPath.split('/');
+    for (let index = 1; index < parts.length; index++) {
+      if (!directorySet.has(parts.slice(0, index).join('/'))) return false;
+    }
+    return true;
+  };
+  const validTreeLayout = validDirectoryEntries && validFileEntries &&
+    directoryPaths.every(item => hasAllParents(item)) &&
+    expected.files.every(item => !directorySet.has(item.path) && hasAllParents(item.path));
   if (expected.format !== 'phoenx-archive-manifest-v2' || expected.hash_algorithm !== 'SHA-256' ||
       !validFileEntries || new Set(paths).size !== paths.length ||
       !validDirectoryEntries || new Set(expected.directories).size !== expected.directories.length ||
+      !validTreeLayout ||
       expected.directory_count !== expected.directories.length ||
       expected.file_count !== expected.files.length ||
       !Number.isSafeInteger(computedTotal) || expected.total_size_bytes !== computedTotal) {

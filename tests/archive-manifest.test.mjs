@@ -96,6 +96,8 @@ test('rejects malformed directory paths and inconsistent directory counts', asyn
     [['artwork', '../outside'], 2],
     [['artwork', 'artwork'], 2],
     [['artwork', 'empty-folder'], 1],
+    [['artwork/subfolder', 'empty-folder'], 2],
+    [['artwork', 'empty-folder', 'master.txt'], 3],
   ]) {
     saved.directories = directories;
     saved.directory_count = directoryCount;
