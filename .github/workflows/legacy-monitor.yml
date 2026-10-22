@@ -28,5 +28,9 @@ jobs:
         run: |
           node scripts/build.mjs
           node scripts/check-build.mjs
+      - name: Verify generated output is reproducible and branding guard passes
+        run: |
+          git diff --exit-code
+          python scripts/check_banned_terms.py
       - name: Check live homepage, release pages, and imported archive
         run: node scripts/check-live-site.mjs
