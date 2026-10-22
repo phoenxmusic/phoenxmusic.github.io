@@ -94,6 +94,9 @@ async function walk(directory, expectedIdentity = null) {
       for await (const chunk of handle.createReadStream({ autoClose: false })) {
         hash.update(chunk);
         sizeBytes += chunk.length;
+        if (!Number.isSafeInteger(sizeBytes)) {
+          throw new Error(`File size exceeds the safe integer range for a manifest; cannot inventory accurately: ${fullPath}`);
+        }
       }
       const after = await handle.stat({ bigint: true });
       // lstat is intentional: stat would follow a symlink substituted after
@@ -128,13 +131,17 @@ async function walk(directory, expectedIdentity = null) {
 await walk(root, canonicalRootStat);
 files.sort((a, b) => a.path.localeCompare(b.path, 'en'));
 directories.sort((a, b) => a.localeCompare(b, 'en'));
+const totalSizeBytes = files.reduce((sum, item) => sum + item.size_bytes, 0);
+if (!Number.isSafeInteger(totalSizeBytes)) {
+  throw new Error('Total archive size exceeds the safe integer range for a manifest; cannot inventory accurately.');
+}
 if (symlinks.length) {
   console.error(`ERROR: ${symlinks.length} symbolic link(s) found. Resolve them explicitly before treating this as a complete archive manifest.`);
   for (const link of symlinks) console.error(`SYMLINK ${link}`);
   process.exit(1);
 }
 
-const manifest = { format: 'phoenx-archive-manifest-v2', hash_algorithm: 'SHA-256', root_label: path.basename(root), file_count: files.length, directory_count: directories.length, total_size_bytes: files.reduce((sum, item) => sum + item.size_bytes, 0), directories, files };
+const manifest = { format: 'phoenx-archive-manifest-v2', hash_algorithm: 'SHA-256', root_label: path.basename(root), file_count: files.length, directory_count: directories.length, total_size_bytes: totalSizeBytes, directories, files };
 const mediaCategory = filename => {
   const ext = path.extname(filename).toLowerCase();
   if (['.wav', '.flac', '.aiff', '.aif', '.mp3', '.m4a', '.aac', '.ogg', '.opus', '.wma'].includes(ext)) return 'audio';
