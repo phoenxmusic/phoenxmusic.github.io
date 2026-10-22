@@ -26,6 +26,7 @@ Preserve the PhoenX body of work, make it understandable and discoverable, and m
 - The current static site is live, but Pages CMS access has not been verified. Do not claim that a visual CMS workflow is operational until an edit has been saved and verified live.
 - No complete master-audio inventory, three-copy backup verification, rights inventory, successor, archive fund, or automated social publishing pipeline has yet been evidenced.
 - A GitHub Actions workflow is configured for monthly, manual, and pull-request runs. It runs archive-manifest tests, checks the attachment metadata report, rebuilds/checks internal links, and probes the homepage, all 9 release pages, all 129 imported WordPress routes, and 4 archive indexes. A GitHub Actions run of the updated workflow remains pending. It does not verify media playback, media binary completeness, backups, social publishing, or WordPress.
+- 2026-10-22: The expanded live-site monitor was run manually and passed against `https://phoenxmusic.github.io/`: homepage, 9 release pages, 129 imported WordPress routes, and 4 archive indexes returned HTTP 200 HTML with expected title text. The monitor now retries network errors and selected transient HTTP statuses (408, 425, 429, 500, 502, 503, 504) up to three attempts; permanent failures such as 404 are not retried. This manual run does not substitute for a successful GitHub Actions workflow run.
 
 ## Workstreams and acceptance gates
 

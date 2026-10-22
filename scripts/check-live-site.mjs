@@ -40,9 +40,31 @@ for (const filename of filenames) {
 }
 
 let failures = 0;
+const maxAttempts = 3;
+const retryableStatuses = new Set([408, 425, 429, 500, 502, 503, 504]);
+const sleep = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
+
 async function check(url, expectedTitle, label) {
   try {
-    const response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'PhoenX-Legacy-Monitor/1.0' } });
+    let response;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        response = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(20000), headers: { 'user-agent': 'PhoenX-Legacy-Monitor/1.0' } });
+      } catch (error) {
+        if (attempt === maxAttempts) throw error;
+        console.warn(`RETRY ${label} attempt ${attempt + 1}/${maxAttempts} after network error: ${error.message}`);
+        await sleep(500 * (2 ** (attempt - 1)));
+        continue;
+      }
+      if (!retryableStatuses.has(response.status) || attempt === maxAttempts) break;
+      const retryAfter = Number(response.headers.get('retry-after'));
+      const delay = Number.isFinite(retryAfter) && retryAfter >= 0
+        ? Math.min(5000, retryAfter * 1000)
+        : 500 * (2 ** (attempt - 1));
+      console.warn(`RETRY ${label} attempt ${attempt + 1}/${maxAttempts} after HTTP ${response.status}; waiting ${delay}ms`);
+      await response.body?.cancel();
+      await sleep(delay);
+    }
     const contentType = response.headers.get('content-type') || '';
     const body = await response.text();
     const problems = [];
