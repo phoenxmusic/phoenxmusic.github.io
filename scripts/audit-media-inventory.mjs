@@ -22,6 +22,14 @@ if (!validArgs) {
 
 const records = JSON.parse(await readFile(input, 'utf8'));
 if (!Array.isArray(records)) throw new Error('Media inventory must be a JSON array.');
+const invalidRecordIndex = records.findIndex(record =>
+  !record || typeof record !== 'object' || Array.isArray(record) ||
+  (typeof record.id !== 'string' && typeof record.id !== 'number') || String(record.id).trim() === '' ||
+  ['title', 'url', 'date', 'mime_type', 'alt', 'attached_file', 'status'].some(key =>
+    record[key] != null && typeof record[key] !== 'string'));
+if (invalidRecordIndex !== -1) {
+  throw new Error(`Malformed media inventory record at index ${invalidRecordIndex}: expected an object with a non-empty string/number id and string metadata fields.`);
+}
 const countBy = keyFn => Object.fromEntries([...records.reduce((counts, record) => {
   const key = keyFn(record);
   counts.set(key, (counts.get(key) || 0) + 1);
