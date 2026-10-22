@@ -229,13 +229,25 @@ test('rejects unsafe paths and duplicate entries in a manifest', async t => {
   assert.notEqual(duplicate.status, 0);
   assert.match(duplicate.stderr, /Unsupported or malformed archive manifest/);
 
-  for (const unsafePath of ['folder\\..\\outside.txt', 'folder//file.txt', './master.txt', 'folder/./file.txt', 'folder/../outside.txt']) {
+  for (const unsafePath of ['folder\\..\\outside.txt', 'folder//file.txt', './master.txt', 'folder/./file.txt', 'folder/../outside.txt', 'bad\u007fname.txt', 'bad\u0001name.txt']) {
     saved.files[0].path = unsafePath;
     saved.files[1].path = 'master.txt';
     saved.total_size_bytes = saved.files.reduce((sum, item) => sum + item.size_bytes, 0);
     await writeFile(manifest, JSON.stringify(saved));
     const result = run([archive, '--verify', manifest]);
     assert.notEqual(result.status, 0, `should reject ${JSON.stringify(unsafePath)}`);
+    assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+  }
+
+  for (const unsafeDirectory of ['bad\u007fname', 'bad\u0001name']) {
+    saved.files[0].path = 'artwork/cover.txt';
+    saved.files[1].path = 'master.txt';
+    saved.directories = ['artwork', 'empty-folder', unsafeDirectory];
+    saved.directory_count = saved.directories.length;
+    saved.total_size_bytes = saved.files.reduce((sum, item) => sum + item.size_bytes, 0);
+    await writeFile(manifest, JSON.stringify(saved));
+    const result = run([archive, '--verify', manifest]);
+    assert.notEqual(result.status, 0, `should reject directory ${JSON.stringify(unsafeDirectory)}`);
     assert.match(result.stderr, /Unsupported or malformed archive manifest/);
   }
 

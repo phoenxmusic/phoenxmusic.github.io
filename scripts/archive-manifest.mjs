@@ -170,7 +170,7 @@ if (verifyPath) {
     item && typeof item.path === 'string' && item.path.length > 0 &&
     !path.posix.isAbsolute(item.path) && !item.path.includes('\\') &&
     item.path.split('/').every(part => part !== '' && part !== '.' && part !== '..') &&
-    path.posix.normalize(item.path) === item.path && !/[\u0000-\u001f]/.test(item.path) &&
+    path.posix.normalize(item.path) === item.path && !/[\u0000-\u001f\u007f]/.test(item.path) &&
     Number.isSafeInteger(item.size_bytes) && item.size_bytes >= 0 &&
     typeof item.sha256 === 'string' && /^[a-f0-9]{64}$/.test(item.sha256));
   const paths = validFileEntries ? expected.files.map(item => item.path) : [];
@@ -179,7 +179,7 @@ if (verifyPath) {
     typeof item === 'string' && item.length > 0 &&
     !path.posix.isAbsolute(item) && !item.includes('\\') &&
     item.split('/').every(part => part !== '' && part !== '.' && part !== '..') &&
-    path.posix.normalize(item) === item && !/[\u0000-\u001f]/.test(item));
+    path.posix.normalize(item) === item && !/[\u0000-\u001f\u007f]/.test(item));
   const directoryPaths = validDirectoryEntries ? expected.directories : [];
   const directorySet = new Set(directoryPaths);
   const hasAllParents = itemPath => {
