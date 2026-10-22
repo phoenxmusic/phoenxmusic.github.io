@@ -57,3 +57,33 @@ This procedure is for the **real source archive**, not the generated website. Th
 - Any missing files, unreadable media, symlinks, zero-byte files, or unexpected differences are explicitly tracked.
 
 **Current status:** Not yet completed. The actual source archive has not been exposed to this DevSpace workspace, and no real-archive inventory, backup verification, or restore test is claimed.
+
+## Evidence log template
+
+Create one dated copy of this record for each intake or verification session. Keep the completed record beside the manifests in a private backup-records location; do not commit real archive paths, personal details, or unreleased track names to the public website repository.
+
+```text
+PhoenX archive preservation session
+Session date/time and time zone:
+Operator:
+Scope confirmed by archive owner (yes/no; details):
+Source device/volume identifier:
+Source path (private record only):
+Source top-level item count and approximate size:
+Source idle before hashing (yes/no):
+Inventory command and tool/repository commit:
+Manifest storage location and SHA-256 of manifest:
+Inventory result (file count / total bytes / zero-byte files / symlinks):
+Backup 1 device/location and copy date:
+Backup 1 verification result and output location:
+Backup 2 device/location and copy date:
+Backup 2 verification result and output location:
+Restore-test destination and selection/scope:
+Restore-test verification result:
+Representative media playback test results:
+Exceptions, unreadable files, or unexplained differences:
+Follow-up owner and next action:
+Session outcome: INCOMPLETE / VERIFIED WITH EXCEPTIONS / VERIFIED
+```
+
+Use `VERIFIED` only when all completion criteria above are met. A successful manifest-generation command alone is not proof that backups exist or can be restored. Preserve raw command output for each verification, and never replace an earlier manifest to conceal a mismatch.
