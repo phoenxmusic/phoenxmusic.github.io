@@ -22,3 +22,10 @@ node scripts/build.mjs
 ```
 
 The script writes the generated `index.html`, `.nojekyll`, and `releases/<slug>/index.html` pages. It only clears the generated `releases/` folder; source files in `content/releases/` are kept separate.
+
+## Legacy preservation and maintenance
+
+- Read [`LEGACY_PLAN.md`](LEGACY_PLAN.md) for the preservation, hosting, marketing, monitoring, and succession roadmap.
+- [`content/marketing/`](content/marketing/) contains planning-only evergreen promotion briefs. Nothing in that folder is published automatically.
+- Use the read-only archive inventory tool against an actual archive directory: `node scripts/archive-manifest.mjs "PATH-TO-MUSIC-LEGACY"`. It prints file sizes and SHA-256 hashes without writing files. To save a new manifest, add `--write "PATH-TO-MUSIC-LEGACY/99_ARCHIVE_MANIFEST/manifest.json"`; the destination must not already exist.
+- The tool has only been tested against the nine Markdown release records so far. The master audio, artwork, video, and backup copies have not yet been inventoried or verified.
