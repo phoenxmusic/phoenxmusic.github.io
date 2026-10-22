@@ -65,7 +65,8 @@ const isValidMimeType = value => {
 const invalidUrlRecords = records.filter(record => {
   try {
     const url = new URL(record.url);
-    return !/^https:\/\//i.test(record.url) || url.protocol !== 'https:' || !url.hostname || Boolean(url.username || url.password);
+    return !/^https:\/\//i.test(record.url) || /[\s\u0000-\u001f\u007f]/.test(record.url) ||
+      url.protocol !== 'https:' || !url.hostname || Boolean(url.username || url.password);
   }
   catch { return true; }
 }).map(record => ({ id: record.id, title: record.title, url: record.url || null }));

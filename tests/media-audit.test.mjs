@@ -123,7 +123,8 @@ test('flags non-absolute HTTPS URLs and URLs containing embedded credentials', a
   await writeFile(path.join(contentDir, 'media.json'), JSON.stringify([
     { id: 1, title: 'relative', url: 'https:relative/path.mp3' },
     { id: 2, title: 'credentials', url: 'https://user:password@example.com/private.mp3' },
-    { id: 3, title: 'valid', url: 'https://example.com/audio.mp3' },
+    { id: 3, title: 'raw whitespace', url: 'https://example.com/audio file.mp3' },
+    { id: 4, title: 'valid', url: 'https://example.com/audio.mp3' },
   ]));
 
   const result = spawnSync(process.execPath, [scriptCopy, '--summary'], {
@@ -132,7 +133,7 @@ test('flags non-absolute HTTPS URLs and URLs containing embedded credentials', a
   });
   assert.equal(result.status, 0, result.stderr);
   const summary = JSON.parse(result.stdout);
-  assert.equal(summary.invalid_or_non_https_url_records, 2);
+  assert.equal(summary.invalid_or_non_https_url_records, 3);
 });
 
 test('reports missing and impossible calendar dates without modifying source metadata', async t => {
