@@ -25,7 +25,7 @@ Preserve the PhoenX body of work, make it understandable and discoverable, and m
 - The WordPress.com connector reported site-scoped editing unavailable on the current plan. No WordPress content or settings have been changed.
 - The current static site is live, but Pages CMS access has not been verified. Do not claim that a visual CMS workflow is operational until an edit has been saved and verified live.
 - No complete master-audio inventory, three-copy backup verification, rights inventory, successor, archive fund, or automated social publishing pipeline has yet been evidenced.
-- A GitHub Actions workflow is configured for monthly, manual, and pull-request runs. It runs archive-manifest tests, rebuilds/checks internal links, and probes the homepage, all 9 release pages, all 129 imported WordPress routes, and 4 archive indexes. Local build/tests and a live run passed on 22 October 2026; an Actions run of the updated workflow remains pending. It does not verify media playback, media binary completeness, backups, social publishing, or WordPress.
+- A GitHub Actions workflow is configured for monthly, manual, and pull-request runs. It runs archive-manifest tests, checks the attachment metadata report, rebuilds/checks internal links, and probes the homepage, all 9 release pages, all 129 imported WordPress routes, and 4 archive indexes. A GitHub Actions run of the updated workflow remains pending. It does not verify media playback, media binary completeness, backups, social publishing, or WordPress.
 
 ## Workstreams and acceptance gates
 
@@ -67,6 +67,7 @@ MUSIC-LEGACY/
 
 - Use `scripts/archive-manifest.mjs` to generate a SHA-256 manifest, then use its `--verify` mode to compare a copied/restored directory against that manifest. The verifier checks missing, unexpected, resized, or hash-changed files; it does not copy files or make a backup by itself.
 - The manifest verifier has automated tests for matching inventories, changed file bytes, missing/unexpected files, and malformed manifests. These tests validate the tool only; the real music archive has not yet been inventoried or restore-tested.
+- The imported WordPress attachment metadata has been audited: 150 records, 150 unique HTTPS URLs, no duplicate URLs, 3 missing titles, 147 missing alt-text values, and 150 missing MIME types. Extension-based counts are provisional, not proof of binary format. The full report is `content/wordpress/media-audit.json`; CI checks report/source consistency. Actual media files remain unavailable and must not be counted as recovered.
 - Keep at least three copies on two types of storage, with one geographically separate; keep one physical copy disconnected when not being updated.
 - Do not treat a checksum as a backup: verify restoreability and compare checksums after copying.
 - Preserve original files unchanged; create working derivatives separately.

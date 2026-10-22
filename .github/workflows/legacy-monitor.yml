@@ -22,6 +22,8 @@ jobs:
           node-version: '24'
       - name: Test archive checksum verifier
         run: node --test tests/archive-manifest.test.mjs
+      - name: Check media metadata audit report
+        run: node scripts/audit-media-inventory.mjs --check
       - name: Rebuild imported archive and validate internal links
         run: |
           node scripts/build.mjs
