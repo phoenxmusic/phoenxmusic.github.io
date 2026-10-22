@@ -58,6 +58,32 @@ if (symlinks.length) {
 }
 
 const manifest = { format: 'phoenx-archive-manifest-v1', hash_algorithm: 'SHA-256', root_label: path.basename(root), file_count: files.length, total_size_bytes: files.reduce((sum, item) => sum + item.size_bytes, 0), files };
+const mediaCategory = filename => {
+  const ext = path.extname(filename).toLowerCase();
+  if (['.wav', '.flac', '.aiff', '.aif', '.mp3', '.m4a', '.aac', '.ogg', '.opus', '.wma'].includes(ext)) return 'audio';
+  if (['.mp4', '.mov', '.mkv', '.avi', '.webm', '.m4v', '.wmv'].includes(ext)) return 'video';
+  if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.tif', '.tiff', '.bmp', '.heic', '.avif', '.svg'].includes(ext)) return 'image';
+  if (['.zip', '.7z', '.rar', '.tar', '.gz', '.bz2', '.xz'].includes(ext)) return 'archive';
+  return 'other';
+};
+const countBy = keyFn => Object.fromEntries([...files.reduce((counts, item) => {
+  const key = keyFn(item);
+  counts.set(key, (counts.get(key) || 0) + 1);
+  return counts;
+}, new Map())].sort(([a], [b]) => a.localeCompare(b, 'en')));
+const hashes = new Map();
+for (const item of files) {
+  if (!hashes.has(item.sha256)) hashes.set(item.sha256, []);
+  hashes.get(item.sha256).push(item.path);
+}
+const duplicateContent = [...hashes].filter(([, paths]) => paths.length > 1).map(([sha256, paths]) => ({ sha256, paths }));
+manifest.inventory_summary = {
+  category_counts: countBy(item => mediaCategory(item.path)),
+  extension_counts: countBy(item => path.extname(item.path).toLowerCase() || '[no extension]'),
+  zero_byte_files: files.filter(item => item.size_bytes === 0).map(item => item.path),
+  duplicate_content_groups: duplicateContent,
+  note: 'Extension-based categories are provisional. Duplicate hashes identify byte-identical files, not necessarily unnecessary copies.'
+};
 const json = `${JSON.stringify(manifest, null, 2)}\n`;
 if (verifyPath) {
   const expected = JSON.parse(await readFile(verifyPath, 'utf8'));
@@ -84,8 +110,10 @@ if (verifyPath) {
   console.log(`VERIFY PASSED: ${files.length} files match manifest SHA-256 hashes and sizes (${manifest.total_size_bytes} bytes).`);
 } else if (output) {
   await writeFile(output, json, { encoding: 'utf8', flag: 'wx' });
-  console.log(`Wrote ${path.relative(process.cwd(), output)}: ${files.length} files, ${manifest.total_size_bytes} bytes.`);
+  console.log(`Wrote ${path.relative(process.cwd(), output)}: ${files.length} files, ${manifest.total_size_bytes} bytes; ${manifest.inventory_summary.zero_byte_files.length} zero-byte files; ${duplicateContent.length} duplicate-content groups.`);
 } else {
   console.log(`Read-only inventory: ${files.length} files, ${manifest.total_size_bytes} bytes. No files written.`);
+  console.log(`Categories: ${Object.entries(manifest.inventory_summary.category_counts).map(([category, count]) => `${category}=${count}`).join(', ') || 'none'}`);
+  console.log(`Zero-byte files: ${manifest.inventory_summary.zero_byte_files.length}; duplicate-content groups: ${duplicateContent.length}; symlinks: ${symlinks.length}.`);
   for (const item of files) console.log(`${item.sha256}  ${item.size_bytes}  ${item.path}`);
 }

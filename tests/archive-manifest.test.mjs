@@ -30,9 +30,27 @@ test('writes and verifies a read-only SHA-256 inventory', async t => {
   const saved = JSON.parse(await readFile(manifest, 'utf8'));
   assert.equal(saved.format, 'phoenx-archive-manifest-v1');
   assert.equal(saved.file_count, 2);
+  assert.deepEqual(saved.inventory_summary.category_counts, { other: 2 });
+  assert.deepEqual(saved.inventory_summary.zero_byte_files, []);
+  assert.deepEqual(saved.inventory_summary.duplicate_content_groups, []);
   const verified = run([archive, '--verify', manifest]);
   assert.equal(verified.status, 0, verified.stderr || verified.stdout);
   assert.match(verified.stdout, /VERIFY PASSED: 2 files match manifest SHA-256 hashes and sizes/);
+});
+
+test('summarizes media categories, zero-byte files, and byte-identical duplicates', async t => {
+  const { archive, manifest } = await fixture(t);
+  await writeFile(path.join(archive, 'master.txt'), 'same bytes\n');
+  await writeFile(path.join(archive, 'artwork', 'cover.txt'), 'same bytes\n');
+  await writeFile(path.join(archive, 'track.mp3'), 'fake fixture bytes');
+  await writeFile(path.join(archive, 'silent.wav'), '');
+  const created = run([archive, '--write', manifest]);
+  assert.equal(created.status, 0, created.stderr || created.stdout);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  assert.deepEqual(saved.inventory_summary.category_counts, { audio: 2, other: 2 });
+  assert.deepEqual(saved.inventory_summary.zero_byte_files, ['silent.wav']);
+  assert.equal(saved.inventory_summary.duplicate_content_groups.length, 1);
+  assert.deepEqual(saved.inventory_summary.duplicate_content_groups[0].paths, ['artwork/cover.txt', 'master.txt']);
 });
 
 test('detects changed file bytes and size', async t => {
