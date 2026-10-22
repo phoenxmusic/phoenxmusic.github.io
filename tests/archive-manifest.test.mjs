@@ -72,13 +72,22 @@ test('summarizes media categories, zero-byte files, and byte-identical duplicate
 
 test('rejects a manifest whose inventory summary no longer matches its file records', async t => {
   const { archive, manifest } = await fixture(t);
-  assert.equal(run([archive, '--write', manifest]).status, 0);
-  const saved = JSON.parse(await readFile(manifest, 'utf8'));
-  saved.inventory_summary.category_counts.other = 99;
-  await writeFile(manifest, JSON.stringify(saved));
-  const result = run([archive, '--verify', manifest]);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+  const corruptions = [
+    summary => { summary.category_counts.other = 99; },
+    summary => { summary.extension_counts['.wav'] = 1; },
+    summary => { summary.zero_byte_files.push('invented.wav'); },
+    summary => { summary.duplicate_content_groups.push({ sha256: '0'.repeat(64), paths: ['master.txt', 'artwork/cover.txt'] }); },
+  ];
+  for (const corrupt of corruptions) {
+    assert.equal(run([archive, '--write', manifest]).status, 0);
+    const saved = JSON.parse(await readFile(manifest, 'utf8'));
+    corrupt(saved.inventory_summary);
+    await writeFile(manifest, JSON.stringify(saved));
+    const result = run([archive, '--verify', manifest]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+    await rm(manifest);
+  }
 });
 
 test('detects changed file bytes and size', async t => {
