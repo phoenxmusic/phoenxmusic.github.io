@@ -30,6 +30,12 @@ const invalidRecordIndex = records.findIndex(record =>
 if (invalidRecordIndex !== -1) {
   throw new Error(`Malformed media inventory record at index ${invalidRecordIndex}: expected an object with a non-empty string/number id and string metadata fields.`);
 }
+const seenIds = new Set();
+for (let index = 0; index < records.length; index++) {
+  const id = String(records[index].id).trim();
+  if (seenIds.has(id)) throw new Error(`Duplicate media inventory id at index ${index}: ${id}.`);
+  seenIds.add(id);
+}
 const countBy = keyFn => Object.fromEntries([...records.reduce((counts, record) => {
   const key = keyFn(record);
   counts.set(key, (counts.get(key) || 0) + 1);
