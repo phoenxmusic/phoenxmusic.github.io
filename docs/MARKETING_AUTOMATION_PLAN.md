@@ -1,6 +1,6 @@
 # PhoenX 24/7 discovery, SEO, and marketing automation
 
-**Status:** design baseline; publishing integrations are not connected.
+**Status:** local SEO/feed build and draft-only engine validated; scheduled workflows are staged on the review branch and still require a successful GitHub Actions run. Publishing integrations are not connected.
 **Cost target:** $0, using repository automation, static-site tooling, public platform features, and existing accounts.
 **Canonical destination:** `https://phoenxmusic.github.io/` while the review version is evaluated.
 **Safety rule:** this plan does not authorize a production deploy, account connection, or public post.
@@ -82,7 +82,9 @@ After publishing is explicitly enabled, the first live cadence should be conserv
 
 - The current review branch has a large uncommitted set of imported/rebuilt site files and a new WordPress export. Preserve these changes; do not reset or blanket-commit them while implementing the marketing layer.
 - The repository already has `content/marketing/queue.csv`, but it is planning-only and its items are not approved for publication.
-- Current site generation emits title, description, canonical, and basic Open Graph text metadata. Sitemap/feed generation and automated campaign publishing are not evidenced yet.
+- Local build validation generates `sitemap.xml`, `robots.txt`, and `rss.xml`; the current verified local build produced 145 canonical routes and 50 dated, published RSS items. This does not prove search-engine indexing or traffic growth.
+- The local draft-only dry run produced nine candidate files, with all nine held because rights clearance and human approval are not established. No campaign item was published.
+- `.github/workflows/seo-health.yml` and `.github/workflows/marketing-drafts.yml` provide read-only health checks and artifact-based draft review. Scheduled execution is not verified until GitHub Actions reports a successful run. Schedules run from the default branch; do not merge this review branch without separate production approval.
 - The site is a review version; do not treat it as the approved production destination until the owner reviews and authorizes deployment.
 - Original media binaries and rights evidence are incomplete. Do not make artwork/audio-dependent promotion eligible until the relevant asset is recovered and cleared.
 - No social publishing integration, search-console data connection, or owner-approved publication cadence is evidenced in this repository.

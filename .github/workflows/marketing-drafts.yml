@@ -1,0 +1,53 @@
+name: PhoenX marketing draft batch
+
+on:
+  schedule:
+    - cron: '23 8 * * *'
+  workflow_dispatch:
+  push:
+    branches: [feat/github-pages-flexibility-test]
+    paths:
+      - '.github/workflows/marketing-drafts.yml'
+      - 'content/marketing/queue.csv'
+      - 'content/releases/**'
+      - 'scripts/marketing-drafts.mjs'
+      - 'tests/marketing-automation.test.mjs'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phoenx-marketing-drafts
+  cancel-in-progress: false
+
+jobs:
+  draft-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out reviewed source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Test marketing safeguards
+        run: node --test tests/marketing-automation.test.mjs
+      - name: Generate drafts outside the public site
+        run: node scripts/marketing-drafts.mjs --out "$RUNNER_TEMP/phoenx-marketing-drafts"
+      - name: Add run report to workflow summary
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/phoenx-marketing-drafts/README.md" ]; then
+            cat "$RUNNER_TEMP/phoenx-marketing-drafts/README.md" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Draft report was not generated; inspect the failed step logs.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Preserve draft package for review
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phoenx-marketing-drafts-${{ github.run_id }}
+          path: ${{ runner.temp }}/phoenx-marketing-drafts/
+          if-no-files-found: error
+          retention-days: 14

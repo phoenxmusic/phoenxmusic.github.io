@@ -1,0 +1,45 @@
+name: PhoenX SEO and archive health
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main, feat/github-pages-flexibility-test]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: phoenx-seo-health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Build the site and SEO assets
+        run: node scripts/build.mjs
+      - name: Run complete test suite
+        run: node --test
+      - name: Audit generated site and internal links
+        run: node scripts/check-build.mjs
+      - name: Validate generated XML
+        run: python -c "import xml.etree.ElementTree as ET; [ET.parse(p) for p in ('sitemap.xml', 'rss.xml')]; print('sitemap.xml and rss.xml are valid XML')"
+      - name: Report validation scope
+        run: |
+          {
+            echo '## PhoenX SEO and archive health'
+            echo '- Site build completed.'
+            echo '- Full Node.js test suite completed.'
+            echo '- Generated site/link audit completed.'
+            echo '- Sitemap and RSS XML parsed successfully.'
+            echo '- This workflow does not deploy or publish social posts.'
+          } >> "$GITHUB_STEP_SUMMARY"
