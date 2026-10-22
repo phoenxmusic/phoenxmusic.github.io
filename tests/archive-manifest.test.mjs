@@ -279,3 +279,22 @@ test('refuses to claim a complete inventory when the archive contains a symlink'
   assert.match(result.stderr, /symbolic link\(s\) found/);
   assert.match(result.stderr, /SYMLINK master-link\.txt/);
 });
+
+test('refuses to silently omit special filesystem objects', async t => {
+  if (process.platform === 'win32') {
+    t.skip('FIFO creation via mkfifo is not available on Windows');
+    return;
+  }
+  const { archive } = await fixture(t);
+  const fifoPath = path.join(archive, 'incoming-audio.pipe');
+  const created = spawnSync('mkfifo', [fifoPath], { encoding: 'utf8', timeout: 5000 });
+  if (created.error?.code === 'ENOENT') {
+    t.skip('mkfifo utility is not installed');
+    return;
+  }
+  assert.equal(created.status, 0, created.stderr || 'mkfifo failed');
+  const result = run([archive]);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /Unsupported filesystem object in archive/);
+  assert.match(result.stderr, /incoming-audio\.pipe/);
+});

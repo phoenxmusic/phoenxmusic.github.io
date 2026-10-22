@@ -80,7 +80,9 @@ async function walk(directory, expectedIdentity = null) {
       await walk(fullPath, info);
       continue;
     }
-    if (!info.isFile()) continue;
+    if (!info.isFile()) {
+      throw new Error(`Unsupported filesystem object in archive; only regular files and directories are accepted: ${fullPath}`);
+    }
     // Hash an open handle so a path replacement cannot silently switch the
     // file being read. Compare handle metadata and the final path identity too.
     // Streaming keeps large WAV/video masters out of RAM.
