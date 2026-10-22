@@ -11,8 +11,12 @@ const args = process.argv.slice(2);
 const rootArg = args.find(arg => !arg.startsWith('--'));
 const writeIndex = args.indexOf('--write');
 const outputArg = writeIndex >= 0 ? args[writeIndex + 1] : null;
-if (!rootArg || (writeIndex >= 0 && (!outputArg || outputArg.startsWith('--')))) {
-  console.error('Usage: node scripts/archive-manifest.mjs <archive-directory> [--write <manifest.json>]');
+const verifyIndex = args.indexOf('--verify');
+const verifyArg = verifyIndex >= 0 ? args[verifyIndex + 1] : null;
+if (!rootArg || (writeIndex >= 0 && (!outputArg || outputArg.startsWith('--'))) ||
+    (verifyIndex >= 0 && (!verifyArg || verifyArg.startsWith('--'))) ||
+    (writeIndex >= 0 && verifyIndex >= 0)) {
+  console.error('Usage: node scripts/archive-manifest.mjs <archive-directory> [--write <manifest.json> | --verify <manifest.json>]');
   process.exit(2);
 }
 
@@ -20,6 +24,7 @@ const root = path.resolve(rootArg);
 const rootStat = await lstat(root);
 if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`Archive root must be a real directory: ${root}`);
 const output = outputArg ? path.resolve(outputArg) : null;
+const verifyPath = verifyArg ? path.resolve(verifyArg) : null;
 const files = [];
 const symlinks = [];
 
@@ -28,7 +33,7 @@ async function walk(directory) {
   entries.sort((a, b) => a.name.localeCompare(b.name, 'en'));
   for (const entry of entries) {
     const fullPath = path.join(directory, entry.name);
-    if (output && fullPath === output) continue;
+    if ((output && fullPath === output) || (verifyPath && fullPath === verifyPath)) continue;
     const info = await lstat(fullPath);
     if (info.isSymbolicLink()) {
       symlinks.push(path.relative(root, fullPath).split(path.sep).join('/'));
@@ -54,7 +59,30 @@ if (symlinks.length) {
 
 const manifest = { format: 'phoenx-archive-manifest-v1', hash_algorithm: 'SHA-256', root_label: path.basename(root), file_count: files.length, total_size_bytes: files.reduce((sum, item) => sum + item.size_bytes, 0), files };
 const json = `${JSON.stringify(manifest, null, 2)}\n`;
-if (output) {
+if (verifyPath) {
+  const expected = JSON.parse(await readFile(verifyPath, 'utf8'));
+  if (expected.format !== 'phoenx-archive-manifest-v1' || expected.hash_algorithm !== 'SHA-256' || !Array.isArray(expected.files)) {
+    throw new Error(`Unsupported or malformed archive manifest: ${verifyPath}`);
+  }
+  const byPath = new Map(files.map(item => [item.path, item]));
+  const expectedByPath = new Map(expected.files.map(item => [item.path, item]));
+  const problems = [];
+  for (const item of expected.files) {
+    const actual = byPath.get(item.path);
+    if (!actual) problems.push(`MISSING ${item.path}`);
+    else {
+      if (actual.size_bytes !== item.size_bytes) problems.push(`SIZE ${item.path}: expected ${item.size_bytes}, got ${actual.size_bytes}`);
+      if (actual.sha256 !== item.sha256) problems.push(`HASH ${item.path}: SHA-256 differs`);
+    }
+  }
+  for (const item of files) if (!expectedByPath.has(item.path)) problems.push(`UNEXPECTED ${item.path}`);
+  if (problems.length) {
+    console.error(`VERIFY FAILED: ${problems.length} difference(s); ${expected.files.length} expected file(s), ${files.length} found.`);
+    for (const problem of problems) console.error(problem);
+    process.exit(1);
+  }
+  console.log(`VERIFY PASSED: ${files.length} files match manifest SHA-256 hashes and sizes (${manifest.total_size_bytes} bytes).`);
+} else if (output) {
   await writeFile(output, json, { encoding: 'utf8', flag: 'wx' });
   console.log(`Wrote ${path.relative(process.cwd(), output)}: ${files.length} files, ${manifest.total_size_bytes} bytes.`);
 } else {

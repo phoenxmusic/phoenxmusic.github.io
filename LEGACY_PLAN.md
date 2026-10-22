@@ -65,7 +65,8 @@ MUSIC-LEGACY/
   99_ARCHIVE_MANIFEST/
 ```
 
-- Use the checksum manifest tool in `scripts/archive-manifest.mjs` against the actual archive directory after it has been inventoried.
+- Use `scripts/archive-manifest.mjs` to generate a SHA-256 manifest, then use its `--verify` mode to compare a copied/restored directory against that manifest. The verifier checks missing, unexpected, resized, or hash-changed files; it does not copy files or make a backup by itself.
+- The manifest verifier has automated tests for matching inventories, changed file bytes, missing/unexpected files, and malformed manifests. These tests validate the tool only; the real music archive has not yet been inventoried or restore-tested.
 - Keep at least three copies on two types of storage, with one geographically separate; keep one physical copy disconnected when not being updated.
 - Do not treat a checksum as a backup: verify restoreability and compare checksums after copying.
 - Preserve original files unchanged; create working derivatives separately.

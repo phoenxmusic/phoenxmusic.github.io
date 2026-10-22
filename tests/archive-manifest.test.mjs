@@ -1,0 +1,65 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const script = path.join(repoRoot, 'scripts', 'archive-manifest.mjs');
+
+async function fixture(t) {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-manifest-test-'));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const archive = path.join(temp, 'archive');
+  await mkdir(path.join(archive, 'artwork'), { recursive: true });
+  await writeFile(path.join(archive, 'artwork', 'cover.txt'), 'original cover bytes\n');
+  await writeFile(path.join(archive, 'master.txt'), 'original master bytes\n');
+  return { temp, archive, manifest: path.join(temp, 'manifest.json') };
+}
+
+function run(args) {
+  return spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', timeout: 15000 });
+}
+
+test('writes and verifies a read-only SHA-256 inventory', async t => {
+  const { archive, manifest } = await fixture(t);
+  const created = run([archive, '--write', manifest]);
+  assert.equal(created.status, 0, created.stderr || created.stdout);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  assert.equal(saved.format, 'phoenx-archive-manifest-v1');
+  assert.equal(saved.file_count, 2);
+  const verified = run([archive, '--verify', manifest]);
+  assert.equal(verified.status, 0, verified.stderr || verified.stdout);
+  assert.match(verified.stdout, /VERIFY PASSED: 2 files match manifest SHA-256 hashes and sizes/);
+});
+
+test('detects changed file bytes and size', async t => {
+  const { archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  await writeFile(path.join(archive, 'master.txt'), 'changed master bytes\n');
+  const result = run([archive, '--verify', manifest]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /VERIFY FAILED/);
+  assert.match(result.stderr, /HASH master\.txt/);
+});
+
+test('detects missing and unexpected files', async t => {
+  const { archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  await rm(path.join(archive, 'master.txt'));
+  await writeFile(path.join(archive, 'new.txt'), 'untracked bytes\n');
+  const result = run([archive, '--verify', manifest]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /MISSING master\.txt/);
+  assert.match(result.stderr, /UNEXPECTED new\.txt/);
+});
+
+test('rejects malformed manifests', async t => {
+  const { archive, manifest } = await fixture(t);
+  await writeFile(manifest, JSON.stringify({ format: 'wrong', files: [] }));
+  const result = run([archive, '--verify', manifest]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+});
