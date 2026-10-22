@@ -26,9 +26,11 @@ jobs:
           python-version: '3.x'
       - name: Build static site (Node.js built-ins only)
         run: node scripts/build.mjs
+      - name: Verify generated site
+        run: node scripts/check-build.mjs
       - name: Stage generated site and run identity check
         run: |
-          git add index.html .nojekyll releases/
+          git add index.html .nojekyll releases/ about/ videos/
           python scripts/check_banned_terms.py
           git diff --cached --check
       - name: Commit generated site when it changed

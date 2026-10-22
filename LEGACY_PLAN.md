@@ -136,7 +136,8 @@ MUSIC-LEGACY/
 
 ## Decision log
 
-- 2026-10-22: Freeze feature expansion on the static site while comparing it with the existing WordPress site. No site migration or deletion authorized by this plan.
+- 2026-10-22: Initial freeze on static-site feature expansion was superseded by the owner's explicit decision to rebuild on GitHub Pages and test its editing flexibility. WordPress remains untouched; Wix is not the chosen destination. Use a review branch and evidence-based checks before production deployment.
+- 2026-10-22: Add a data-driven homepage settings file, Pages CMS fields for release artwork/video metadata, a searchable/filterable catalogue, an archive-information page, and a separate index for unmatched video IDs. This is a flexibility experiment; the Pages CMS account connection and a real no-code save remain unverified until tested.
 - 2026-10-22: Do not assign the 13 unmapped YouTube IDs to releases without evidence.
 
 ## Status vocabulary

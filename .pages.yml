@@ -33,12 +33,50 @@ content:
       - name: youtube_id
         label: YouTube video ID
         type: string
+        description: Leave blank unless the video is verified for this release.
+        pattern:
+          regex: "^$|^[A-Za-z0-9_-]{11}$"
+          message: "Enter an 11-character YouTube ID or leave blank."
+      - name: artwork
+        label: Artwork
+        type: image
+        options:
+          path: artwork
+          extensions: [jpg, jpeg, png, webp, avif]
       - name: old_site_url
         label: Original release URL
         type: string
       - name: body
         label: Story and credits
         type: rich-text
+
+  - name: site
+    label: Homepage settings
+    type: file
+    path: content/site.json
+    format: json
+    fields:
+      - name: title
+        label: Site title
+        type: string
+        required: true
+      - name: tagline
+        label: Homepage subtitle
+        type: string
+        required: true
+      - name: description
+        label: Search and sharing description
+        type: text
+      - name: original_site_url
+        label: Original WordPress site URL
+        type: string
+      - name: featured_video_id
+        label: Featured YouTube video ID
+        type: string
+        description: Use only a verified video ID; leave blank to hide the featured player.
+        pattern:
+          regex: "^$|^[A-Za-z0-9_-]{11}$"
+          message: "Enter an 11-character YouTube ID or leave blank."
 
 settings:
   content:

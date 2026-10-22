@@ -1,15 +1,24 @@
 # PhoenX music catalogue
 
-The public site is built from Markdown files in `content/releases/`. Each file represents one release. Edit the front-matter fields and the story/credits body through [Pages CMS](https://app.pagescms.org/) after granting it access to this repository. A GitHub Action regenerates the root `index.html` and `releases/` pages after each non-build push; GitHub Pages is configured to publish `main` from `/`.
+The public site is a static website hosted on GitHub Pages. It is generated from portable source records in this repository, with no package installation or paid API required. The generated site includes a searchable/filterable release catalogue, one permanent page per release, a separate archive of unmatched video IDs, and an archive-information page.
 
-## Edit a release
+## Edit without writing code
 
-1. Open Pages CMS and sign in with GitHub.
-2. Install/authorize the Pages CMS GitHub App for `phoenxmusic/phoenxmusic.github.io` if prompted.
-3. Open this repository and select the `main` branch.
-4. Select **Releases**, then open a release.
-5. Edit the fields or rich-text **Story and credits** body, then save/commit to `main`.
-6. The **Build and deploy PhoenX site** GitHub Action builds and publishes the change.
+The repository is configured for [Pages CMS](https://app.pagescms.org/). **The configuration is committed, but the account/app connection and an actual CMS save still need to be verified.** Once connected:
+
+### Edit a release
+
+1. Sign in to Pages CMS with GitHub and authorize it for `phoenxmusic/phoenxmusic.github.io` if prompted.
+2. Open this repository and select the publishing branch, `main`.
+3. Open **Releases** and select a release.
+4. Edit its title, year, type, language, YouTube ID, artwork, original page URL, or story/credits.
+5. Save/commit the change. The build checks the source and regenerates the static site.
+
+Leave a YouTube ID blank unless the video is verified for that release. Artwork uploads are stored in the repository under `media/`; do not upload assets without the right to publish them.
+
+### Edit the homepage
+
+Open **Homepage settings** in Pages CMS. The editable fields are stored in `content/site.json`: site title, subtitle, description, original WordPress URL, and featured video ID. Saving a change to the publishing branch triggers the build workflow. A featured video ID must be 11 valid YouTube ID characters or blank.
 
 Blank values are unknown; do not guess them. The artist name is PhoenX only. `.banned-terms` is enforced by the local Git hooks and the GitHub Actions check.
 
@@ -21,7 +30,9 @@ Requires Node.js only; no package installation is needed.
 node scripts/build.mjs
 ```
 
-The script writes the generated `index.html`, `.nojekyll`, and `releases/<slug>/index.html` pages. It only clears the generated `releases/` folder; source files in `content/releases/` are kept separate.
+The script writes generated `index.html`, `.nojekyll`, `about/index.html`, `videos/index.html`, and `releases/<slug>/index.html` pages. It only clears the generated `releases/`, `about/`, and `videos/` folders; source records are kept separate.
+
+Run `node scripts/check-build.mjs` after the build to verify the generated page count, interactive catalogue controls, Greek text, and the separate 13-item unmatched-video archive. The GitHub Actions workflow runs this check before staging generated output.
 
 ## Legacy preservation and maintenance
 
