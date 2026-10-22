@@ -4,7 +4,7 @@
 // Symlinks are rejected rather than silently followed, and no source files are modified.
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { readdir, readFile, lstat, stat, writeFile } from 'node:fs/promises';
+import { readdir, readFile, lstat, stat, realpath, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const args = process.argv.slice(2);
@@ -21,11 +21,19 @@ if (!rootArg || rootArg.startsWith('--') ||
   process.exit(2);
 }
 
-const root = path.resolve(rootArg);
-const rootStat = await lstat(root);
-if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`Archive root must be a real directory: ${root}`);
-const output = outputArg ? path.resolve(outputArg) : null;
-const verifyPath = verifyArg ? path.resolve(verifyArg) : null;
+const requestedRoot = path.resolve(rootArg);
+const rootStat = await lstat(requestedRoot);
+if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`Archive root must be a real directory: ${requestedRoot}`);
+// Canonicalize paths so a symlinked parent cannot make an apparently external
+// manifest path resolve back into the archive and contaminate its inventory.
+const root = await realpath(requestedRoot);
+const canonicalTarget = async target => {
+  if (!target) return null;
+  const absolute = path.resolve(target);
+  return path.resolve(await realpath(path.dirname(absolute)), path.basename(absolute));
+};
+const output = await canonicalTarget(outputArg);
+const verifyPath = await canonicalTarget(verifyArg);
 const isWithinRoot = candidate => {
   if (!candidate) return false;
   const relative = path.relative(root, candidate);

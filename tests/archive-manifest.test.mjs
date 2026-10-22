@@ -128,6 +128,24 @@ test('refuses to write or read a manifest inside the archive being inventoried',
   await assert.rejects(readFile(internalManifest, 'utf8'));
 });
 
+test('resolves symlinked manifest parents before checking archive boundaries', async t => {
+  const { temp, archive } = await fixture(t);
+  const alias = path.join(temp, 'archive-alias');
+  try {
+    await symlink(archive, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) {
+      t.skip(`Symlink creation is not permitted in this environment (${error.code})`);
+      return;
+    }
+    throw error;
+  }
+  const result = run([archive, '--write', path.join(alias, 'manifest.json')]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Manifest input\/output must be stored outside the archive directory/);
+  await assert.rejects(readFile(path.join(archive, 'manifest.json'), 'utf8'));
+});
+
 test('rejects unsafe paths and duplicate entries in a manifest', async t => {
   const { archive, manifest } = await fixture(t);
   assert.equal(run([archive, '--write', manifest]).status, 0);
