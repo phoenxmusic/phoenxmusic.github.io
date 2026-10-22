@@ -90,6 +90,21 @@ test('refuses to overwrite an existing manifest', async t => {
   assert.equal(await readFile(manifest, 'utf8'), 'keep this existing file unchanged\n');
 });
 
+test('refuses to write or read a manifest inside the archive being inventoried', async t => {
+  const { archive, manifest } = await fixture(t);
+  const internalManifest = path.join(archive, 'manifest.json');
+  const writeResult = run([archive, '--write', internalManifest]);
+  assert.notEqual(writeResult.status, 0);
+  assert.match(writeResult.stderr, /Manifest input\/output must be stored outside the archive directory/);
+  assert.equal(await readFile(path.join(archive, 'master.txt'), 'utf8'), 'original master bytes\n');
+
+  await writeFile(manifest, JSON.stringify({ format: 'phoenx-archive-manifest-v1' }));
+  const verifyResult = run([archive, '--verify', internalManifest]);
+  assert.notEqual(verifyResult.status, 0);
+  assert.match(verifyResult.stderr, /Manifest input\/output must be stored outside the archive directory/);
+  await assert.rejects(readFile(internalManifest, 'utf8'));
+});
+
 test('rejects unsafe paths and duplicate entries in a manifest', async t => {
   const { archive, manifest } = await fixture(t);
   assert.equal(run([archive, '--write', manifest]).status, 0);

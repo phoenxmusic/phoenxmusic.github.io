@@ -26,6 +26,14 @@ const rootStat = await lstat(root);
 if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`Archive root must be a real directory: ${root}`);
 const output = outputArg ? path.resolve(outputArg) : null;
 const verifyPath = verifyArg ? path.resolve(verifyArg) : null;
+const isWithinRoot = candidate => {
+  if (!candidate) return false;
+  const relative = path.relative(root, candidate);
+  return relative === '' || (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`));
+};
+if (isWithinRoot(output) || isWithinRoot(verifyPath)) {
+  throw new Error('Manifest input/output must be stored outside the archive directory.');
+}
 const files = [];
 const symlinks = [];
 
