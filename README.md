@@ -1,6 +1,6 @@
 # PhoenX music catalogue
 
-The public site is a static website hosted on GitHub Pages. It is generated from portable source records in this repository, with no package installation or paid API required. It includes a searchable/filterable release catalogue, permanent release pages, the published WordPress pages and posts, a video archive, and a media-reference inventory.
+The public site is a static website hosted on GitHub Pages. It is generated from portable source records in this repository, with no package installation or paid API required. It includes a searchable/filterable release catalogue, permanent release pages, the published WordPress pages and posts, a searchable video archive for the public videos on both PhoenX YouTube channels, and a media-reference inventory.
 
 ## Artist presentation layer
 
@@ -48,7 +48,9 @@ node scripts/build.mjs
 
 The script writes generated `index.html`, `.nojekyll`, `archive-info/index.html`, `journal/`, `archive-pages/`, `media-archive/`, release pages, and the routes recorded in the imported WordPress JSON. It clears only the generated `releases/`, `archive-info/`, and `videos/` folders; source records are kept separate.
 
-Run `node scripts/check-build.mjs` after the build to verify the generated page count, interactive catalogue controls, Greek text, the WordPress import counts, route uniqueness, source provenance, and the separate 13-item unmatched-video archive. The GitHub Actions workflow runs this check before staging generated output.
+Run `node scripts/check-build.mjs` after the build to verify the generated page count, interactive catalogue controls, Greek text, the WordPress import counts, route uniqueness, source provenance, and the public YouTube video index. The video archive has search and channel filters; it loads each privacy-enhanced YouTube player only after the visitor presses play. The checked-in source list is `content/youtube-videos.json`.
+
+To refresh the video index from YouTube's public channel listings, install the free `yt-dlp` command and run `python scripts/sync-youtube-videos.py`, then run `node scripts/build.mjs` and `node scripts/check-build.mjs`. The refresh script reads the two channel `/videos` pages, deduplicates video IDs, and writes the checked-in static JSON source; the published site does not need an API key or make a runtime request to enumerate channels. Videos can later become private or disable embedding, so availability is not guaranteed indefinitely.
 
 ## WordPress content migration
 

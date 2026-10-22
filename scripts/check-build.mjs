@@ -27,6 +27,7 @@ const sourceFiles = (await import('node:fs/promises')).readdir(path.join(root, '
 const releaseFiles = await sourceFiles;
 const generatedReleaseFiles = await (await import('node:fs/promises')).readdir(path.join(root, 'releases'));
 const videoIds = [...(await read('content/unmapped-youtube-ids.md')).matchAll(/^\s*-\s+([A-Za-z0-9_-]{11})\s*$/gm)].map(match => match[1]);
+const youtubeVideos = JSON.parse(await read('content/youtube-videos.json'));
 
 assert(homepage.includes('<h1>' + site.title + '</h1>') && homepage.includes(site.tagline), 'homepage title and subtitle come from content/site.json');
 assert(homepage.includes('id="release-search"') && homepage.includes('id="year-filter"') && homepage.includes('id="type-filter"') && homepage.includes('id="language-filter"'), 'release search and all three filters are present');
@@ -37,8 +38,12 @@ assert(homepage.includes('navigator.clipboard.writeText') && homepage.includes('
 assert(homepage.includes('prefers-reduced-motion:reduce') && homepage.includes('aria-expanded="false"') && homepage.includes('aria-controls="primary-navigation"'), 'navigation and motion behavior include accessibility controls');
 assert(releaseFiles.length === generatedReleaseFiles.length, 'all ' + releaseFiles.length + ' Markdown release records have generated pages');
 assert(await exists('archive-info/index.html') && aboutArchive.includes('What is verified'), 'separate migration and archive information page exists');
-assert(await exists('videos/index.html') && videoIds.length === 13, '13 explicitly listed unmatched video IDs are retained');
-assert(videoIds.every(id => videos.includes('/embed/' + id)), 'all unmatched video IDs are rendered without assigning them to releases');
+assert(await exists('videos/index.html') && youtubeVideos.length === 90, 'all 90 public videos from the two supplied channels are indexed');
+assert(new Set(youtubeVideos.map(video => video.id)).size === youtubeVideos.length, 'YouTube video index contains unique video IDs');
+assert(youtubeVideos.filter(video => video.channel === 'Nikolas Phoenx').length === 2 && youtubeVideos.filter(video => video.channel === 'PhoenX Music').length === 88, 'both YouTube channels are represented with expected counts');
+assert(youtubeVideos.every(video => videos.includes(`data-video-id="${video.id}"`) && videos.includes(escapeHtml(video.title))), 'all public video titles and IDs are rendered in the searchable archive');
+assert(videoIds.length === 13 && videoIds.every(id => youtubeVideos.some(video => video.id === id)), 'the original 13 unmatched archive IDs remain included in the full channel index');
+assert(videos.includes('data-play-video') && videos.includes('youtube-nocookie.com/embed/'), 'video players are embedded on demand using the privacy-enhanced YouTube host');
 assert(homepage.includes('/journal/') && homepage.includes('/archive-pages/') && homepage.includes('/media-archive/'), 'homepage exposes the imported WordPress content indexes');
 
 const report = JSON.parse(await read('content/wordpress/import-report.json'));
