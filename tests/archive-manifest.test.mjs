@@ -77,6 +77,10 @@ test('rejects a manifest whose inventory summary no longer matches its file reco
     summary => { summary.extension_counts['.wav'] = 1; },
     summary => { summary.zero_byte_files.push('invented.wav'); },
     summary => { summary.duplicate_content_groups.push({ sha256: '0'.repeat(64), paths: ['master.txt', 'artwork/cover.txt'] }); },
+    summary => { delete summary.extension_counts; },
+    summary => { summary.category_counts = ['other']; },
+    summary => { summary.zero_byte_files = 'none'; },
+    summary => { summary.duplicate_content_groups = {}; },
   ];
   for (const corrupt of corruptions) {
     assert.equal(run([archive, '--write', manifest]).status, 0);
@@ -88,6 +92,13 @@ test('rejects a manifest whose inventory summary no longer matches its file reco
     assert.match(result.stderr, /Unsupported or malformed archive manifest/);
     await rm(manifest);
   }
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  delete saved.inventory_summary;
+  await writeFile(manifest, JSON.stringify(saved));
+  const result = run([archive, '--verify', manifest]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unsupported or malformed archive manifest/);
 });
 
 test('detects changed file bytes and size', async t => {
