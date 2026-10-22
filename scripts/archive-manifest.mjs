@@ -53,6 +53,10 @@ const directories = [];
 const symlinks = [];
 
 async function walk(directory) {
+  const directoryBefore = await lstat(directory, { bigint: true });
+  if (!directoryBefore.isDirectory() || directoryBefore.isSymbolicLink()) {
+    throw new Error(`Archive directory was replaced or is not a real directory: ${directory}`);
+  }
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((a, b) => a.name.localeCompare(b.name, 'en'));
   for (const entry of entries) {
@@ -97,6 +101,11 @@ async function walk(directory) {
     } finally {
       await handle.close();
     }
+  }
+  const directoryAfter = await lstat(directory, { bigint: true });
+  if (!directoryAfter.isDirectory() || directoryAfter.isSymbolicLink() ||
+      directoryBefore.dev !== directoryAfter.dev || directoryBefore.ino !== directoryAfter.ino) {
+    throw new Error(`Archive directory changed while being inventoried; retry with the archive idle: ${directory}`);
   }
 }
 

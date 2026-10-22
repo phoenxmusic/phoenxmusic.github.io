@@ -88,6 +88,24 @@ test('detects missing and unexpected directories, including empty folders', asyn
   assert.match(result.stderr, /UNEXPECTED DIRECTORY new-empty-folder/);
 });
 
+test('rejects malformed directory paths and inconsistent directory counts', async t => {
+  const { archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  for (const [directories, directoryCount] of [
+    [['artwork', '../outside'], 2],
+    [['artwork', 'artwork'], 2],
+    [['artwork', 'empty-folder'], 1],
+  ]) {
+    saved.directories = directories;
+    saved.directory_count = directoryCount;
+    await writeFile(manifest, JSON.stringify(saved));
+    const result = run([archive, '--verify', manifest]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+  }
+});
+
 test('rejects malformed manifests', async t => {
   const { archive, manifest } = await fixture(t);
   for (const content of [
