@@ -70,6 +70,17 @@ test('summarizes media categories, zero-byte files, and byte-identical duplicate
   assert.deepEqual(saved.inventory_summary.duplicate_content_groups[0].paths, ['artwork/cover.txt', 'master.txt']);
 });
 
+test('rejects a manifest whose inventory summary no longer matches its file records', async t => {
+  const { archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  saved.inventory_summary.category_counts.other = 99;
+  await writeFile(manifest, JSON.stringify(saved));
+  const result = run([archive, '--verify', manifest]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+});
+
 test('detects changed file bytes and size', async t => {
   const { archive, manifest } = await fixture(t);
   assert.equal(run([archive, '--write', manifest]).status, 0);

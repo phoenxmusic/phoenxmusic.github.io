@@ -206,6 +206,18 @@ if (verifyPath) {
   const validTreeLayout = validDirectoryEntries && validFileEntries &&
     directoryPaths.every(item => hasAllParents(item)) &&
     expected.files.every(item => !directorySet.has(item.path) && hasAllParents(item.path));
+  const sameCounts = (actual, computed) => actual && typeof actual === 'object' && !Array.isArray(actual) &&
+    Object.keys(actual).length === Object.keys(computed).length &&
+    Object.entries(computed).every(([key, value]) => actual[key] === value);
+  const expectedSummary = expected.inventory_summary;
+  const actualSummary = manifest.inventory_summary;
+  const summaryMatches = expectedSummary && typeof expectedSummary === 'object' && !Array.isArray(expectedSummary) &&
+    sameCounts(expectedSummary.category_counts, actualSummary.category_counts) &&
+    sameCounts(expectedSummary.extension_counts, actualSummary.extension_counts) &&
+    Array.isArray(expectedSummary.zero_byte_files) &&
+    JSON.stringify(expectedSummary.zero_byte_files) === JSON.stringify(actualSummary.zero_byte_files) &&
+    Array.isArray(expectedSummary.duplicate_content_groups) &&
+    JSON.stringify(expectedSummary.duplicate_content_groups) === JSON.stringify(actualSummary.duplicate_content_groups);
   if (expected.format !== 'phoenx-archive-manifest-v2' || expected.hash_algorithm !== 'SHA-256' ||
       typeof expected.root_label !== 'string' || expected.root_label.length === 0 ||
       /[\u0000-\u001f\u007f]/.test(expected.root_label) ||
@@ -215,7 +227,8 @@ if (verifyPath) {
       !validTreeLayout ||
       expected.directory_count !== expected.directories.length ||
       expected.file_count !== expected.files.length ||
-      !Number.isSafeInteger(computedTotal) || expected.total_size_bytes !== computedTotal) {
+      !Number.isSafeInteger(computedTotal) || expected.total_size_bytes !== computedTotal ||
+      !summaryMatches) {
     throw new Error(`Unsupported or malformed archive manifest: ${verifyPath}`);
   }
   const byPath = new Map(files.map(item => [item.path, item]));
