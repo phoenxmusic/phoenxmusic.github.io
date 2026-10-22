@@ -9,6 +9,15 @@ const baseUrl = (process.env.PHOENX_SITE_URL || 'https://phoenxmusic.github.io')
 const releaseDir = path.join(root, 'content', 'releases');
 const filenames = (await readdir(releaseDir)).filter(name => name.endsWith('.md')).sort();
 if (!filenames.length) throw new Error('No release source files found.');
+const readJson = async relative => JSON.parse(await readFile(path.join(root, relative), 'utf8'));
+const importedRecords = [
+  ...await readJson('content/wordpress/pages.json'),
+  ...await readJson('content/wordpress/posts.json'),
+  ...await readJson('content/wordpress/portfolio.json'),
+];
+if (!importedRecords.length || importedRecords.some(record => record.status !== 'publish' || !record.route || !record.title)) {
+  throw new Error('Imported public archive records are missing required published status, route, or title.');
+}
 
 function escapeHtml(value = '') {
   return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
@@ -56,16 +65,33 @@ async function check(url, expectedTitle, label) {
 
 const homepage = await check(`${baseUrl}/`, 'PhoenX', 'homepage');
 for (const release of releases) {
-  const url = `${baseUrl}/releases/${release.slug}/`;
   if (!homepage.includes(`/releases/${release.slug}/`)) {
     failures++;
     console.error(`FAIL homepage catalogue link missing for ${release.slug}`);
   }
-  await check(url, release.title, `release:${release.slug}`);
+}
+
+const targets = [
+  ...releases.map(release => ({ route: `/releases/${release.slug}/`, title: release.title, label: `release:${release.slug}` })),
+  ...importedRecords.map(record => ({ route: record.route, title: record.title, label: `wordpress:${record.type}:${record.id}` })),
+  ...[
+    ['/journal/', '109 published posts', 'archive:journal'],
+    ['/archive-pages/', '19 published pages', 'archive:pages'],
+    ['/media-archive/', '150 attachment records', 'archive:media'],
+    ['/archive-info/', 'What is verified', 'archive:information'],
+  ].map(([route, title, label]) => ({ route, title, label })),
+];
+
+// Keep the monthly probe bounded: parallel batches avoid a long serial run
+// without generating an unbounded burst of requests to GitHub Pages.
+const batchSize = 8;
+for (let index = 0; index < targets.length; index += batchSize) {
+  const batch = targets.slice(index, index + batchSize);
+  await Promise.all(batch.map(target => check(`${baseUrl}${target.route}`, target.title, target.label)));
 }
 
 if (failures) {
-  console.error(`MONITOR FAILED: ${failures} problem(s) across homepage and ${releases.length} release pages.`);
+  console.error(`MONITOR FAILED: ${failures} problem(s) across homepage, ${releases.length} release pages, ${importedRecords.length} imported WordPress routes, and 4 archive indexes.`);
   process.exit(1);
 }
-console.log(`MONITOR PASSED: homepage and ${releases.length} release pages returned valid HTML with expected catalogue links and titles.`);
+console.log(`MONITOR PASSED: homepage, ${releases.length} release pages, ${importedRecords.length} imported WordPress routes, and 4 archive indexes returned valid HTML with expected titles and homepage catalogue links.`);

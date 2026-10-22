@@ -18,14 +18,14 @@ Preserve the PhoenX body of work, make it understandable and discoverable, and m
 
 - Public catalogue: <https://phoenxmusic.github.io/>.
 - Source repository: `phoenxmusic/phoenxmusic.github.io`, branch `main`.
-- Last verified local HEAD: `5a0194b` (`Add Markdown release CMS and static builder`); working tree was clean during the initial audit.
+- Last published migration commit: `53d6d53` (`Migrate published WordPress archive to GitHub Pages`). The expanded live monitor is being developed on the review branch; it has not yet been merged into `main`.
 - Nine release Markdown files exist under `content/releases/` and generate nine permanent release pages.
 - Thirteen YouTube IDs remain explicitly unmapped in `content/unmapped-youtube-ids.md`; do not assign them without verification.
 - Existing WordPress site: <https://phoenxmusic.wordpress.com/>. Connected-account metrics reported 121 posts, 23 pages, 102 media items, about 70.6 MB stored, one monthly view, and no post published in over a year. This is a starting inventory, not proof that all material is complete or accurate.
 - The WordPress.com connector reported site-scoped editing unavailable on the current plan. No WordPress content or settings have been changed.
 - The current static site is live, but Pages CMS access has not been verified. Do not claim that a visual CMS workflow is operational until an edit has been saved and verified live.
 - No complete master-audio inventory, three-copy backup verification, rights inventory, successor, archive fund, or automated social publishing pipeline has yet been evidenced.
-- A monthly GitHub Actions smoke-check workflow has been added in this commit; it must complete a scheduled/manual run successfully before monitoring is considered verified. It checks HTTP/HTML responses, homepage links, and expected release titles; it does not verify media playback, backups, social publishing, or WordPress.
+- A monthly GitHub Actions smoke-check workflow exists. The expanded checker now tests the homepage, all 9 release pages, all 129 imported WordPress routes, and 4 archive indexes. A local live run passed on 22 October 2026; a scheduled/manual GitHub Actions run using the expanded checker remains pending. It does not verify media playback, media binary completeness, backups, social publishing, or WordPress.
 
 ## Workstreams and acceptance gates
 
