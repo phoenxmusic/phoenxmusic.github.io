@@ -1,6 +1,7 @@
 import { readFile, access, stat, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Script } from 'node:vm';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = relative => readFile(path.join(root, relative), 'utf8');
@@ -30,6 +31,10 @@ const videoIds = [...(await read('content/unmapped-youtube-ids.md')).matchAll(/^
 assert(homepage.includes('<h1>' + site.title + '</h1>') && homepage.includes(site.tagline), 'homepage title and subtitle come from content/site.json');
 assert(homepage.includes('id="release-search"') && homepage.includes('id="year-filter"') && homepage.includes('id="type-filter"') && homepage.includes('id="language-filter"'), 'release search and all three filters are present');
 assert(homepage.includes('name="viewport"') && homepage.includes('@media(max-width:48rem)'), 'responsive layout and viewport metadata are present');
+assert(['Home', 'Music', 'Videos', 'Story', 'Journal', 'Connect'].every(label => homepage.includes('>' + label + '</a>')), 'homepage has the six primary artist-site navigation sections');
+assert(['view-toggle', 'surprise-release', 'share-filters', 'clear-filters'].every(id => homepage.includes('id="' + id + '"')), 'catalogue exposes list/grid, random discovery, shareable filters, and reset controls');
+assert(homepage.includes('navigator.clipboard.writeText') && homepage.includes('searchParams.set') && homepage.includes('params.get'), 'filtered catalogue links can be copied and restored from URL parameters');
+assert(homepage.includes('prefers-reduced-motion:reduce') && homepage.includes('aria-expanded="false"') && homepage.includes('aria-controls="primary-navigation"'), 'navigation and motion behavior include accessibility controls');
 assert(releaseFiles.length === generatedReleaseFiles.length, 'all ' + releaseFiles.length + ' Markdown release records have generated pages');
 assert(await exists('archive-info/index.html') && aboutArchive.includes('What is verified'), 'separate migration and archive information page exists');
 assert(await exists('videos/index.html') && videoIds.length === 13, '13 explicitly listed unmatched video IDs are retained');
@@ -79,9 +84,14 @@ const samplePost = posts.find(record => record.title === 'The Sthlm sessions Vol
 assert(Boolean(samplePost) && (await read(decodeURIComponent(samplePost.route).slice(1) + 'index.html')).includes('original WordPress URL'), 'sample journal post preserves content and source provenance');
 assert((await stat(path.join(root, 'content', 'wordpress', 'posts.json'))).size > 100000, 'full published post content is stored in the repository');
 const htmlFiles = await collectHtml(root);
+const navCoverage = await Promise.all(htmlFiles.map(async file => (await read(file)).includes('id="primary-navigation"')));
+assert(htmlFiles.length > 0 && navCoverage.every(Boolean), 'all generated HTML pages share the primary artist navigation');
 let checkedInternalLinks = 0;
 for (const file of htmlFiles) {
   const html = await read(file);
+  for (const match of html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi)) {
+    new Script(match[1], { filename: file + ':inline-script' });
+  }
   for (const match of html.matchAll(/(?:href|src)=(['"])(\/[^'"#]*)(?:#[^'"]*)?\1/gi)) {
     let pathname;
     try { pathname = decodeURIComponent(new URL(match[2], 'https://phoenxmusic.github.io').pathname); } catch { continue; }

@@ -144,6 +144,7 @@ MUSIC-LEGACY/
 - 2026-10-22: Add a data-driven homepage settings file, Pages CMS fields for release artwork/video metadata, a searchable/filterable catalogue, an archive-information page, and a separate index for unmatched video IDs. This is a flexibility experiment; the Pages CMS account connection and a real no-code save remain unverified until tested.
 - 2026-10-22: Do not assign the 13 unmapped YouTube IDs to releases without evidence.
 - 2026-10-22: Import the published WordPress export into the GitHub Pages rebuild: 19 pages, 109 posts, one portfolio item, 150 media attachment references, and 39 navigation records. Private/draft content is excluded. The WXR export does not include media binaries and the WordPress source returned HTTP 403 for page/API/media retrieval, so binary media migration remains blocked and is explicitly reported.
+- 2026-10-22: Presentation redesign implemented on review branch `feat/github-pages-flexibility-test`: shared Home/Music/Videos/Story/Journal/Connect navigation, responsive mobile menu, artist-oriented homepage sections, catalogue list/card view, random discovery within current filters, copyable filter URLs, reset action, skip-to-content and reduced-motion support. Local build and route/source-provenance checks passed; the redesign has not been visually reviewed in a browser or deployed to production. Decorative record artwork and animated bars are CSS only; no original media binaries or audio-reactive player are implied.
 
 ## Status vocabulary
 

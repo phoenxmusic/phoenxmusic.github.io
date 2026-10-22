@@ -2,6 +2,22 @@
 
 The public site is a static website hosted on GitHub Pages. It is generated from portable source records in this repository, with no package installation or paid API required. It includes a searchable/filterable release catalogue, permanent release pages, the published WordPress pages and posts, a video archive, and a media-reference inventory.
 
+## Artist presentation layer
+
+The presentation redesign is developed on the review branch `feat/github-pages-flexibility-test`; it is not the production `main` branch. It gives the site a consistent artist-oriented navigation structure across generated pages: **Home, Music, Videos, Story, Journal, Connect**, with a separate secondary navigation for archive and migration records.
+
+The homepage includes a responsive hero, clear paths into the catalogue/video archive/story, a CSS-drawn record spotlight (not a claim that original release artwork was recovered), and the configured featured YouTube embed. The catalogue adds:
+
+- list/card view switching;
+- a “Surprise me” action that selects a release matching the current filters;
+- shareable filtered URLs, including restoring filters from query parameters;
+- a one-action filter reset;
+- keyboard focus states, a skip-to-content link, a responsive menu, and reduced-motion support.
+
+The decorative animated bars are not an audio-reactive visualizer. No persistent cross-page audio player is claimed: the imported WordPress export contains attachment references but not the media binaries, and video IDs must not be assigned to releases without verification. Do not publish or describe missing media as recovered.
+
+After changing presentation code, run `node scripts/build.mjs`, `node scripts/check-build.mjs`, `node --test tests/*.test.mjs`, and `python scripts/check_banned_terms.py`. The checker compiles inline JavaScript from generated HTML, checks navigation coverage, validates all generated routes and source provenance, and counts the release/WordPress/archive records. Do not merge to `main` or change the public production site until the review version has been visually reviewed and approved.
+
 ## Edit without writing code
 
 The repository is configured for [Pages CMS](https://app.pagescms.org/). **The configuration is committed, but the account/app connection and an actual CMS save still need to be verified.** Once connected:
