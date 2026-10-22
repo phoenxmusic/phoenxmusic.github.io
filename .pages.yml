@@ -1,0 +1,45 @@
+media: media
+
+content:
+  - name: releases
+    label: Releases
+    type: collection
+    path: content/releases
+    format: yaml-frontmatter
+    filename:
+      template: "{primary}.md"
+      field: false
+    view:
+      primary: title
+      fields: [title, year, type, language]
+      sort: [year, title]
+      default:
+        sort: year
+        order: desc
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: year
+        label: Year
+        type: string
+      - name: type
+        label: Type
+        type: string
+      - name: language
+        label: Language
+        type: string
+      - name: youtube_id
+        label: YouTube video ID
+        type: string
+      - name: old_site_url
+        label: Original release URL
+        type: string
+      - name: body
+        label: Story and credits
+        type: rich-text
+
+settings:
+  content:
+    merge: true
