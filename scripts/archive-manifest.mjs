@@ -21,11 +21,16 @@ if (!rootArg || rootArg.startsWith('--') ||
 }
 
 const requestedRoot = path.resolve(rootArg);
-const rootStat = await lstat(requestedRoot);
+const rootStat = await lstat(requestedRoot, { bigint: true });
 if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(`Archive root must be a real directory: ${requestedRoot}`);
 // Canonicalize paths so a symlinked parent cannot make an apparently external
 // manifest path resolve back into the archive and contaminate its inventory.
 const root = await realpath(requestedRoot);
+const canonicalRootStat = await lstat(root, { bigint: true });
+if (!canonicalRootStat.isDirectory() || canonicalRootStat.isSymbolicLink() ||
+    rootStat.dev !== canonicalRootStat.dev || rootStat.ino !== canonicalRootStat.ino) {
+  throw new Error(`Archive root changed while its path was being resolved; retry with the archive idle: ${requestedRoot}`);
+}
 const canonicalTarget = async target => {
   if (!target) return null;
   const absolute = path.resolve(target);
@@ -112,7 +117,7 @@ async function walk(directory, expectedIdentity = null) {
   }
 }
 
-await walk(root);
+await walk(root, canonicalRootStat);
 files.sort((a, b) => a.path.localeCompare(b.path, 'en'));
 directories.sort((a, b) => a.localeCompare(b, 'en'));
 if (symlinks.length) {
