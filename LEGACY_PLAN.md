@@ -25,7 +25,7 @@ Preserve the PhoenX body of work, make it understandable and discoverable, and m
 - The WordPress.com connector reported site-scoped editing unavailable on the current plan. No WordPress content or settings have been changed.
 - The current static site is live, but Pages CMS access has not been verified. Do not claim that a visual CMS workflow is operational until an edit has been saved and verified live.
 - No complete master-audio inventory, three-copy backup verification, rights inventory, successor, archive fund, or automated social publishing pipeline has yet been evidenced.
-- A monthly GitHub Actions smoke-check workflow exists. The expanded checker now tests the homepage, all 9 release pages, all 129 imported WordPress routes, and 4 archive indexes. A local live run passed on 22 October 2026; a scheduled/manual GitHub Actions run using the expanded checker remains pending. It does not verify media playback, media binary completeness, backups, social publishing, or WordPress.
+- A GitHub Actions workflow is configured for monthly, manual, and pull-request runs. It runs archive-manifest tests, rebuilds/checks internal links, and probes the homepage, all 9 release pages, all 129 imported WordPress routes, and 4 archive indexes. Local build/tests and a live run passed on 22 October 2026; an Actions run of the updated workflow remains pending. It does not verify media playback, media binary completeness, backups, social publishing, or WordPress.
 
 ## Workstreams and acceptance gates
 
