@@ -112,7 +112,8 @@ async function walk(directory, expectedIdentity = null) {
   }
   const directoryAfter = await lstat(directory, { bigint: true });
   if (!directoryAfter.isDirectory() || directoryAfter.isSymbolicLink() ||
-      directoryBefore.dev !== directoryAfter.dev || directoryBefore.ino !== directoryAfter.ino) {
+      directoryBefore.dev !== directoryAfter.dev || directoryBefore.ino !== directoryAfter.ino ||
+      directoryBefore.mtimeNs !== directoryAfter.mtimeNs || directoryBefore.ctimeNs !== directoryAfter.ctimeNs) {
     throw new Error(`Archive directory changed while being inventoried; retry with the archive idle: ${directory}`);
   }
 }
