@@ -9,14 +9,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
-const rootArg = args.find(arg => !arg.startsWith('--'));
-const writeIndex = args.indexOf('--write');
-const outputArg = writeIndex >= 0 ? args[writeIndex + 1] : null;
-const verifyIndex = args.indexOf('--verify');
-const verifyArg = verifyIndex >= 0 ? args[verifyIndex + 1] : null;
-if (!rootArg || (writeIndex >= 0 && (!outputArg || outputArg.startsWith('--'))) ||
-    (verifyIndex >= 0 && (!verifyArg || verifyArg.startsWith('--'))) ||
-    (writeIndex >= 0 && verifyIndex >= 0)) {
+const rootArg = args[0];
+const mode = args.length > 1 ? args[1] : null;
+const targetArg = args.length > 1 ? args[2] : null;
+const outputArg = mode === '--write' ? targetArg : null;
+const verifyArg = mode === '--verify' ? targetArg : null;
+if (!rootArg || rootArg.startsWith('--') ||
+    (args.length !== 1 && args.length !== 3) ||
+    (args.length === 3 && !['--write', '--verify'].includes(mode)) ||
+    (args.length === 3 && (!targetArg || targetArg.startsWith('--')))) {
   console.error('Usage: node scripts/archive-manifest.mjs <archive-directory> [--write <manifest.json> | --verify <manifest.json>]');
   process.exit(2);
 }

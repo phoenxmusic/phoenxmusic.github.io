@@ -90,6 +90,21 @@ test('refuses to overwrite an existing manifest', async t => {
   assert.equal(await readFile(manifest, 'utf8'), 'keep this existing file unchanged\n');
 });
 
+test('rejects unknown flags, misplaced arguments, and extra arguments', async t => {
+  const { archive, manifest } = await fixture(t);
+  for (const args of [
+    [archive, '--unknown', manifest],
+    ['--write', manifest, archive],
+    [archive, '--write'],
+    [archive, '--write', manifest, 'unexpected'],
+  ]) {
+    const result = run(args);
+    assert.equal(result.status, 2, `${args.join(' ')}\n${result.stderr}`);
+    assert.match(result.stderr, /Usage: node scripts\/archive-manifest\.mjs/);
+  }
+  await assert.rejects(readFile(manifest, 'utf8'));
+});
+
 test('refuses to write or read a manifest inside the archive being inventoried', async t => {
   const { archive, manifest } = await fixture(t);
   const internalManifest = path.join(archive, 'manifest.json');
