@@ -56,6 +56,12 @@ const isValidDate = value => {
   if (Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== day) return false;
   return value.length === 10 || (value.slice(10).trim().length > 0 && !Number.isNaN(Date.parse(value)));
 };
+const isValidMimeType = value => {
+  if (typeof value !== 'string' || !value.trim()) return false;
+  const essence = value.split(';', 1)[0].trim();
+  const token = "[!#$%&'*+.^_`|~0-9A-Za-z-]+";
+  return new RegExp(`^${token}/${token}$`).test(essence);
+};
 const invalidUrlRecords = records.filter(record => {
   try {
     const url = new URL(record.url);
@@ -77,6 +83,7 @@ const report = {
   missing_title_records: records.filter(record => !String(record.title || '').trim()).map(record => ({ id: record.id, url: record.url || null })),
   missing_alt_records: records.filter(record => !String(record.alt || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null })),
   missing_mime_type_records: records.filter(record => !String(record.mime_type || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null, inferred_extension: extensionOf(record.url) })),
+  invalid_mime_type_records: records.filter(record => String(record.mime_type || '').trim() && !isValidMimeType(record.mime_type)).map(record => ({ id: record.id, title: record.title, mime_type: record.mime_type, url: record.url || null })),
   missing_date_records: records.filter(record => !String(record.date || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null })),
   invalid_date_records: records.filter(record => String(record.date || '').trim() && !isValidDate(record.date)).map(record => ({ id: record.id, title: record.title, date: record.date, url: record.url || null })),
   extension_counts: countBy(record => extensionOf(record.url)),
@@ -107,6 +114,7 @@ if (checkReport) {
       missing_title_records: report.missing_title_records.length,
       missing_alt_records: report.missing_alt_records.length,
       missing_mime_type_records: report.missing_mime_type_records.length,
+      invalid_mime_type_records: report.invalid_mime_type_records.length,
       missing_date_records: report.missing_date_records.length,
       invalid_date_records: report.invalid_date_records.length,
       extension_counts: report.extension_counts,
