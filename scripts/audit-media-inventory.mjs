@@ -84,6 +84,19 @@ const mimeExtensionMismatchRecords = records.filter(record => {
   extension: extensionOf(record.url),
   url: record.url || null,
 }));
+const attachmentPathFilenameMismatchRecords = records.filter(record => {
+  if (!String(record.attached_file || '').trim() || !String(record.url || '').trim()) return false;
+  try {
+    const urlFilename = path.posix.basename(new URL(record.url).pathname);
+    const attachmentFilename = path.posix.basename(record.attached_file.replace(/\\/g, '/'));
+    return Boolean(urlFilename && attachmentFilename && urlFilename !== attachmentFilename);
+  } catch { return false; }
+}).map(record => ({
+  id: record.id,
+  title: record.title,
+  attached_file: record.attached_file,
+  url: record.url,
+}));
 const invalidUrlRecords = records.filter(record => {
   try {
     const url = new URL(record.url);
@@ -108,6 +121,7 @@ const report = {
   missing_mime_type_records: records.filter(record => !String(record.mime_type || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null, inferred_extension: extensionOf(record.url) })),
   invalid_mime_type_records: records.filter(record => String(record.mime_type || '').trim() && !isValidMimeType(record.mime_type)).map(record => ({ id: record.id, title: record.title, mime_type: record.mime_type, url: record.url || null })),
   mime_extension_mismatch_records: mimeExtensionMismatchRecords,
+  attachment_path_filename_mismatch_records: attachmentPathFilenameMismatchRecords,
   missing_date_records: records.filter(record => !String(record.date || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null })),
   invalid_date_records: records.filter(record => String(record.date || '').trim() && !isValidDate(record.date)).map(record => ({ id: record.id, title: record.title, date: record.date, url: record.url || null })),
   extension_counts: countBy(record => extensionOf(record.url)),
@@ -140,6 +154,7 @@ if (checkReport) {
       missing_mime_type_records: report.missing_mime_type_records.length,
       invalid_mime_type_records: report.invalid_mime_type_records.length,
       mime_extension_mismatch_records: report.mime_extension_mismatch_records.length,
+      attachment_path_filename_mismatch_records: report.attachment_path_filename_mismatch_records.length,
       missing_date_records: report.missing_date_records.length,
       invalid_date_records: report.invalid_date_records.length,
       extension_counts: report.extension_counts,

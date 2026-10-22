@@ -216,6 +216,30 @@ test('flags known MIME and filename-extension conflicts without guessing missing
   assert.equal(summary.mime_extension_mismatch_records, 1);
 });
 
+test('reports attachment-path and source-URL filename conflicts', async t => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-filename-'));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const scriptsDir = path.join(temp, 'scripts');
+  const contentDir = path.join(temp, 'content', 'wordpress');
+  await mkdir(scriptsDir, { recursive: true });
+  await mkdir(contentDir, { recursive: true });
+  const scriptCopy = path.join(scriptsDir, 'audit-media-inventory.mjs');
+  await writeFile(scriptCopy, await readFile(script, 'utf8'));
+  await writeFile(path.join(contentDir, 'media.json'), JSON.stringify([
+    { id: 1, title: 'matching', url: 'https://example.com/audio.mp3', attached_file: '/uploads/audio.mp3' },
+    { id: 2, title: 'mismatch', url: 'https://example.com/photo.jpg', attached_file: '/uploads/renamed.jpg' },
+    { id: 3, title: 'missing local path', url: 'https://example.com/no-path.png', attached_file: '' },
+  ]));
+
+  const result = spawnSync(process.execPath, [scriptCopy, '--summary'], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const summary = JSON.parse(result.stdout);
+  assert.equal(summary.attachment_path_filename_mismatch_records, 1);
+});
+
 test('rejects duplicate attachment identifiers instead of conflating records', async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-duplicate-id-'));
   t.after(() => rm(temp, { recursive: true, force: true }));
