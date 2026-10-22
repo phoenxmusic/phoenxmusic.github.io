@@ -72,6 +72,7 @@ MUSIC-LEGACY/
 - Keep at least three copies on two types of storage, with one geographically separate; keep one physical copy disconnected when not being updated.
 - Do not treat a checksum as a backup: verify restoreability and compare checksums after copying.
 - Preserve original files unchanged; create working derivatives separately.
+- Follow `docs/ARCHIVE_INTAKE_CHECKLIST.md` for the safe intake, manifest, copy-verification, and restore-test sequence. The checklist is a procedure, not evidence that any real archive or backup has already been processed.
 
 **Acceptance gate:** Inventory exported, SHA-256 manifest generated, three copies and their locations documented, and a sample restore verified. This gate is not passed yet.
 

@@ -82,6 +82,14 @@ test('rejects malformed manifests', async t => {
   assert.match(result.stderr, /Unsupported or malformed archive manifest/);
 });
 
+test('refuses to overwrite an existing manifest', async t => {
+  const { archive, manifest } = await fixture(t);
+  await writeFile(manifest, 'keep this existing file unchanged\n');
+  const result = run([archive, '--write', manifest]);
+  assert.notEqual(result.status, 0);
+  assert.equal(await readFile(manifest, 'utf8'), 'keep this existing file unchanged\n');
+});
+
 test('rejects unsafe paths and duplicate entries in a manifest', async t => {
   const { archive, manifest } = await fixture(t);
   assert.equal(run([archive, '--write', manifest]).status, 0);
