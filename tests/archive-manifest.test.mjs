@@ -41,6 +41,20 @@ test('writes and verifies a read-only SHA-256 inventory', async t => {
   assert.match(verified.stdout, /VERIFY PASSED: 2 files and 2 directories match the manifest/);
 });
 
+test('rejects verifying an otherwise identical archive under a different root label', async t => {
+  const { temp, archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  const renamedArchive = path.join(temp, 'archive-copy');
+  await mkdir(renamedArchive);
+  await mkdir(path.join(renamedArchive, 'artwork'));
+  await mkdir(path.join(renamedArchive, 'empty-folder'));
+  await writeFile(path.join(renamedArchive, 'artwork', 'cover.txt'), 'original cover bytes\n');
+  await writeFile(path.join(renamedArchive, 'master.txt'), 'original master bytes\n');
+  const result = run([renamedArchive, '--verify', manifest]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+});
+
 test('summarizes media categories, zero-byte files, and byte-identical duplicates', async t => {
   const { archive, manifest } = await fixture(t);
   await writeFile(path.join(archive, 'master.txt'), 'same bytes\n');

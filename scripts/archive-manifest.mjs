@@ -197,6 +197,7 @@ if (verifyPath) {
   if (expected.format !== 'phoenx-archive-manifest-v2' || expected.hash_algorithm !== 'SHA-256' ||
       typeof expected.root_label !== 'string' || expected.root_label.length === 0 ||
       /[\u0000-\u001f\u007f]/.test(expected.root_label) ||
+      expected.root_label !== path.basename(root) ||
       !validFileEntries || new Set(paths).size !== paths.length ||
       !validDirectoryEntries || new Set(expected.directories).size !== expected.directories.length ||
       !validTreeLayout ||
