@@ -146,6 +146,24 @@ test('resolves symlinked manifest parents before checking archive boundaries', a
   await assert.rejects(readFile(path.join(archive, 'manifest.json'), 'utf8'));
 });
 
+test('resolves a symlinked manifest file before checking archive boundaries', async t => {
+  const { temp, archive, manifest } = await fixture(t);
+  const insideManifest = path.join(archive, 'manifest.json');
+  await writeFile(insideManifest, JSON.stringify({ format: 'phoenx-archive-manifest-v1' }));
+  try {
+    await symlink(insideManifest, manifest, 'file');
+  } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) {
+      t.skip(`File symlink creation is not permitted in this environment (${error.code})`);
+      return;
+    }
+    throw error;
+  }
+  const result = run([archive, '--verify', manifest]);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Manifest input\/output must be stored outside the archive directory/);
+});
+
 test('rejects unsafe paths and duplicate entries in a manifest', async t => {
   const { archive, manifest } = await fixture(t);
   assert.equal(run([archive, '--write', manifest]).status, 0);

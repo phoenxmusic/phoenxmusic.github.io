@@ -30,7 +30,14 @@ const root = await realpath(requestedRoot);
 const canonicalTarget = async target => {
   if (!target) return null;
   const absolute = path.resolve(target);
-  return path.resolve(await realpath(path.dirname(absolute)), path.basename(absolute));
+  try {
+    // Resolve the final component too when it already exists, including file
+    // symlinks. Otherwise a manifest symlink could bypass the archive boundary.
+    return await realpath(absolute);
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return path.resolve(await realpath(path.dirname(absolute)), path.basename(absolute));
+  }
 };
 const output = await canonicalTarget(outputArg);
 const verifyPath = await canonicalTarget(verifyArg);
