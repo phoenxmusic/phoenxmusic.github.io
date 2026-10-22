@@ -190,6 +190,32 @@ test('flags malformed MIME types while accepting standard type/subtype values', 
   assert.equal(summary.invalid_mime_type_records, 2);
 });
 
+test('flags known MIME and filename-extension conflicts without guessing missing types', async t => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-mime-extension-'));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const scriptsDir = path.join(temp, 'scripts');
+  const contentDir = path.join(temp, 'content', 'wordpress');
+  await mkdir(scriptsDir, { recursive: true });
+  await mkdir(contentDir, { recursive: true });
+  const scriptCopy = path.join(scriptsDir, 'audit-media-inventory.mjs');
+  await writeFile(scriptCopy, await readFile(script, 'utf8'));
+  await writeFile(path.join(contentDir, 'media.json'), JSON.stringify([
+    { id: 1, title: 'consistent audio', url: 'https://example.com/a.mp3', mime_type: 'audio/mpeg' },
+    { id: 2, title: 'conflicting image', url: 'https://example.com/b.png', mime_type: 'image/jpeg' },
+    { id: 3, title: 'zip alias', url: 'https://example.com/c.zip', mime_type: 'application/x-zip-compressed' },
+    { id: 4, title: 'missing type', url: 'https://example.com/d.mp3', mime_type: '' },
+    { id: 5, title: 'unknown extension', url: 'https://example.com/e.custom', mime_type: 'image/jpeg' },
+  ]));
+
+  const result = spawnSync(process.execPath, [scriptCopy, '--summary'], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const summary = JSON.parse(result.stdout);
+  assert.equal(summary.mime_extension_mismatch_records, 1);
+});
+
 test('rejects duplicate attachment identifiers instead of conflating records', async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-duplicate-id-'));
   t.after(() => rm(temp, { recursive: true, force: true }));

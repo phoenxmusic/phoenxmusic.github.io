@@ -62,6 +62,28 @@ const isValidMimeType = value => {
   const token = "[!#$%&'*+.^_`|~0-9A-Za-z-]+";
   return new RegExp(`^${token}/${token}$`).test(essence);
 };
+const expectedMimeTypesByExtension = new Map([
+  ['.gif', new Set(['image/gif'])],
+  ['.jpeg', new Set(['image/jpeg'])],
+  ['.jpg', new Set(['image/jpeg'])],
+  ['.mp3', new Set(['audio/mpeg'])],
+  ['.png', new Set(['image/png'])],
+  ['.zip', new Set(['application/zip', 'application/x-zip-compressed'])],
+]);
+const mimeExtensionMismatchRecords = records.filter(record => {
+  if (!isValidMimeType(record.mime_type)) return false;
+  const extension = extensionOf(record.url);
+  const expected = expectedMimeTypesByExtension.get(extension);
+  if (!expected) return false;
+  const essence = record.mime_type.split(';', 1)[0].trim().toLowerCase();
+  return !expected.has(essence);
+}).map(record => ({
+  id: record.id,
+  title: record.title,
+  mime_type: record.mime_type,
+  extension: extensionOf(record.url),
+  url: record.url || null,
+}));
 const invalidUrlRecords = records.filter(record => {
   try {
     const url = new URL(record.url);
@@ -85,6 +107,7 @@ const report = {
   missing_alt_records: records.filter(record => !String(record.alt || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null })),
   missing_mime_type_records: records.filter(record => !String(record.mime_type || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null, inferred_extension: extensionOf(record.url) })),
   invalid_mime_type_records: records.filter(record => String(record.mime_type || '').trim() && !isValidMimeType(record.mime_type)).map(record => ({ id: record.id, title: record.title, mime_type: record.mime_type, url: record.url || null })),
+  mime_extension_mismatch_records: mimeExtensionMismatchRecords,
   missing_date_records: records.filter(record => !String(record.date || '').trim()).map(record => ({ id: record.id, title: record.title, url: record.url || null })),
   invalid_date_records: records.filter(record => String(record.date || '').trim() && !isValidDate(record.date)).map(record => ({ id: record.id, title: record.title, date: record.date, url: record.url || null })),
   extension_counts: countBy(record => extensionOf(record.url)),
@@ -116,6 +139,7 @@ if (checkReport) {
       missing_alt_records: report.missing_alt_records.length,
       missing_mime_type_records: report.missing_mime_type_records.length,
       invalid_mime_type_records: report.invalid_mime_type_records.length,
+      mime_extension_mismatch_records: report.mime_extension_mismatch_records.length,
       missing_date_records: report.missing_date_records.length,
       invalid_date_records: report.invalid_date_records.length,
       extension_counts: report.extension_counts,
