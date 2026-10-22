@@ -76,10 +76,18 @@ test('detects missing and unexpected files', async t => {
 
 test('rejects malformed manifests', async t => {
   const { archive, manifest } = await fixture(t);
-  await writeFile(manifest, JSON.stringify({ format: 'wrong', files: [] }));
-  const result = run([archive, '--verify', manifest]);
-  assert.notEqual(result.status, 0);
-  assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+  for (const content of [
+    JSON.stringify({ format: 'wrong', files: [] }),
+    'not JSON at all',
+    'null',
+    '[]',
+  ]) {
+    await writeFile(manifest, content);
+    const result = run([archive, '--verify', manifest]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Manifest is not valid JSON|Unsupported or malformed archive manifest/);
+    assert.doesNotMatch(result.stderr, /TypeError: Cannot read properties of null/);
+  }
 });
 
 test('refuses to overwrite an existing manifest', async t => {

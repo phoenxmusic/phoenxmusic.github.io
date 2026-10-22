@@ -106,7 +106,16 @@ manifest.inventory_summary = {
 };
 const json = `${JSON.stringify(manifest, null, 2)}\n`;
 if (verifyPath) {
-  const expected = JSON.parse(await readFile(verifyPath, 'utf8'));
+  let expected;
+  try {
+    expected = JSON.parse(await readFile(verifyPath, 'utf8'));
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new Error(`Manifest is not valid JSON: ${verifyPath}`);
+    throw error;
+  }
+  if (!expected || typeof expected !== 'object' || Array.isArray(expected)) {
+    throw new Error(`Unsupported or malformed archive manifest: ${verifyPath}`);
+  }
   const validFileEntries = Array.isArray(expected.files) && expected.files.every(item =>
     item && typeof item.path === 'string' && item.path.length > 0 &&
     !path.posix.isAbsolute(item.path) && !item.path.includes('\\') &&
