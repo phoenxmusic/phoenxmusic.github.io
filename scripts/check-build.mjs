@@ -12,7 +12,8 @@ const escapeHtml = value => String(value).replaceAll('&', '&amp;').replaceAll('<
 async function collectHtml(directory, prefix = '') {
   const found = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.name.startsWith('.') || ['scripts', 'content', 'node_modules'].includes(entry.name)) continue;
+    // Standalone design concepts are review artifacts, not generated site pages.
+    if (entry.name.startsWith('.') || ['scripts', 'content', 'node_modules', 'presentation-preview'].includes(entry.name)) continue;
     const relative = path.join(prefix, entry.name);
     if (entry.isDirectory()) found.push(...await collectHtml(path.join(directory, entry.name), relative));
     else if (entry.isFile() && entry.name.endsWith('.html')) found.push(relative);
