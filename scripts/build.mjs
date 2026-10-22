@@ -6,8 +6,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceDir = path.join(root, 'content', 'releases');
 const outDir = root;
 const generatedReleasesDir = path.join(root, 'releases');
-const generatedAboutDir = path.join(root, 'about');
+const generatedAboutDir = path.join(root, 'archive-info');
 const generatedVideosDir = path.join(root, 'videos');
+const generatedJournalDir = path.join(root, 'journal');
+const generatedArchivePagesDir = path.join(root, 'archive-pages');
+const generatedMediaArchiveDir = path.join(root, 'media-archive');
+const wordpressContentDir = path.join(root, 'content', 'wordpress');
 const bannedFile = path.join(root, '.banned-terms');
 const site = JSON.parse(await readFile(path.join(root, 'content', 'site.json'), 'utf8'));
 const banned = (await readFile(bannedFile, 'utf8')).split(/\r?\n/).map(x => x.trim()).filter(Boolean);
@@ -67,6 +71,47 @@ function documentHtml({ title, description, body, canonical, lang = 'en' }) {
   return `<!DOCTYPE html>\n<html lang="${escapeHtml(lang)}">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>${escapeHtml(title)}</title>\n<meta name="description" content="${escapeHtml(description)}">\n<link rel="canonical" href="${escapeHtml(canonical)}">\n<meta property="og:type" content="website">\n<meta property="og:title" content="${escapeHtml(title)}">\n<meta property="og:description" content="${escapeHtml(description)}">\n<meta property="og:url" content="${escapeHtml(canonical)}">\n<style>${style}</style>\n</head>\n<body>${body}\n</body>\n</html>\n`;
 }
 
+function sanitizeImportedHtml(source = '') {
+  return String(source)
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+    .replace(/<form\b[^>]*>[\s\S]*?<\/form\s*>/gi, '')
+    .replace(/<object\b[^>]*>[\s\S]*?<\/object\s*>/gi, '')
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(href|src|action)\s*=\s*(["'])\s*javascript:[\s\S]*?\2/gi, '$1="#"');
+}
+
+function routeDirectory(route) {
+  const decoded = decodeURIComponent(route).split('/').filter(Boolean);
+  if (!decoded.length || decoded.some(part => part === '.' || part === '..' || /[<>:"|?*]/.test(part) || part.includes('\\\\') || [...part].some(char => char.charCodeAt(0) < 32))) {
+    throw new Error(`Unsafe imported WordPress route: ${route}`);
+  }
+  return path.join(root, ...decoded);
+}
+
+function wordpressNav() {
+  return `<nav aria-label=\"Site navigation\"><a href=\"/\">Catalogue</a><a href=\"/journal/\">Journal</a><a href=\"/archive-pages/\">WordPress pages</a><a href=\"/media-archive/\">Media references</a><a href=\"/videos/\">Video archive</a><a href=\"/archive-info/\">About this archive</a></nav>`;
+}
+
+function rewriteImportedLinks(source, pathToRoute, slugToRoute) {
+  const withMediaPlaceholders = sanitizeImportedHtml(source).replace(/<img\b([^>]*?)src=(['"])(https?:\/\/(?:www\.)?meniossymeon\.wordpress\.com\/wp-content\/uploads\/[^'"]+)\2([^>]*)\/?>/gi, (full, before, quote, url, after) => {
+    const alt = (before + ' ' + after).match(/\balt=(['"])(.*?)\1/i);
+    const label = alt ? alt[2] : 'WordPress image';
+    return '<span class="media-unavailable" title="' + escapeHtml(url) + '" style="display:block;padding:1rem;border-left:3px solid var(--ember);background:var(--panel)">' + escapeHtml(label) + ' — original file not included in the export. See the media reference inventory for the source URL.</span>';
+  });
+  return withMediaPlaceholders.replace(/(href|src)=(['"])(https?:\/\/(?:www\.)?meniossymeon\.(?:wordpress\.com|com)[^'"]*)\2/gi, (full, attr, quote, url) => {
+    if (attr.toLowerCase() !== 'href') return full;
+    try {
+      const parsed = new URL(url);
+      let sourcePath = decodeURIComponent(parsed.pathname || '/');
+      if (sourcePath !== '/' && !sourcePath.endsWith('/')) sourcePath += '/';
+      const lastSegment = sourcePath.split('/').filter(Boolean).pop() || '';
+      const route = sourcePath === '/' ? '/' : (pathToRoute.get(sourcePath) || slugToRoute.get(lastSegment));
+      if (!route) return full;
+      return attr + '=' + quote + route + parsed.search + parsed.hash + quote;
+    } catch { return full; }
+  });
+}
+
 const files = (await readdir(sourceDir)).filter(name => name.endsWith('.md')).sort();
 if (!files.length) throw new Error('No Markdown release files found in content/releases');
 const releases = [];
@@ -89,13 +134,109 @@ await writeFile(path.join(outDir, 'index.html'), documentHtml({ title: `${site.t
 await rm(generatedAboutDir, { recursive: true, force: true });
 await mkdir(generatedAboutDir, { recursive: true });
 const aboutBody = `<header><div class="wrap"><p><a href="/">← ${escapeHtml(site.title)}</a></p><h1 style="font-size:clamp(2.5rem,9vw,4.5rem)">About this archive</h1><p class="sub">A portable, source-backed music catalogue.</p><nav aria-label="Main"><a href="/">Catalogue</a><a href="/videos/">Video archive</a><a href="${escapeHtml(site.original_site_url)}">Original site</a></nav></div></header><main><article class="wrap page-content"><p>${escapeHtml(site.description)}</p><h2>How it works</h2><p>Release records are stored as Markdown files in the repository. The build script turns those records into a responsive static website with permanent release pages. This keeps the catalogue portable and allows changes to be reviewed through version history.</p><h2>What is verified</h2><ul><li>Known release titles and years are shown from the current source records.</li><li>Unknown years remain marked as unknown.</li><li>Video links not verified against a particular release are kept in a separate index rather than assigned by guesswork.</li><li>Artwork is only displayed when a source record contains an explicit image path.</li></ul><p class="notice">The original WordPress site is retained as a reference. This static catalogue does not replace a full backup of original audio, photographs, video, or rights documentation.</p><p><a class="button-link" href="/">Return to the catalogue</a></p></article></main><footer><div class="wrap">${escapeHtml(site.title)} · <a href="${escapeHtml(site.original_site_url)}">Original site</a></div></footer>`;
-await writeFile(path.join(generatedAboutDir, 'index.html'), documentHtml({ title: `About this archive — ${site.title}`, description: 'How the PhoenX static music catalogue is structured and maintained.', canonical: 'https://phoenxmusic.github.io/about/', body: aboutBody }), 'utf8');
+await writeFile(path.join(generatedAboutDir, 'index.html'), documentHtml({ title: `About this archive — ${site.title}`, description: 'How the PhoenX static music catalogue is structured and maintained.', canonical: 'https://phoenxmusic.github.io/archive-info/', body: aboutBody }), 'utf8');
 
 await rm(generatedVideosDir, { recursive: true, force: true });
 await mkdir(generatedVideosDir, { recursive: true });
 const videoCards = uniqueVideoIds.map((id, index) => `<article class="video-card"><h2>Unmatched video ${String(index + 1).padStart(2, '0')}</h2><iframe class="video" loading="lazy" src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}" title="Unmatched PhoenX video ${String(index + 1).padStart(2, '0')}" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe><p class="small">Video ID: <code>${escapeHtml(id)}</code></p><p class="small">Retained from the earlier catalogue; title and release association have not been verified.</p></article>`).join('\n');
 const videosBody = `<header><div class="wrap"><p><a href="/">← ${escapeHtml(site.title)}</a></p><h1 style="font-size:clamp(2.5rem,9vw,4.5rem)">Video archive</h1><p class="sub">${uniqueVideoIds.length} video IDs retained without guessing their release matches.</p><nav aria-label="Main"><a href="/">Catalogue</a><a href="/about/">About this archive</a><a href="${escapeHtml(site.original_site_url)}">Original site</a></nav></div></header><main><section><div class="wrap"><p class="notice">These videos were present in the earlier catalogue. The title and association for each release have not been verified, so they are listed by archive number and ID rather than given invented names. An embedded player may be unavailable if its owner removed or restricted the video.</p><div class="video-grid">${videoCards}</div></div></section></main><footer><div class="wrap"><a href="/">Back to catalogue</a></div></footer>`;
 await writeFile(path.join(generatedVideosDir, 'index.html'), documentHtml({ title: `Video archive — ${site.title}`, description: 'Video IDs retained from the earlier PhoenX catalogue, without unverified release associations.', canonical: 'https://phoenxmusic.github.io/videos/', body: videosBody }), 'utf8');
+
+const wordpressReportPath = path.join(wordpressContentDir, 'import-report.json');
+if (await readFile(wordpressReportPath, 'utf8').then(() => true).catch(() => false)) {
+  const wpPages = JSON.parse(await readFile(path.join(wordpressContentDir, 'pages.json'), 'utf8'));
+  const wpPosts = JSON.parse(await readFile(path.join(wordpressContentDir, 'posts.json'), 'utf8'));
+  const wpPortfolio = JSON.parse(await readFile(path.join(wordpressContentDir, 'portfolio.json'), 'utf8'));
+  const wpMedia = JSON.parse(await readFile(path.join(wordpressContentDir, 'media.json'), 'utf8'));
+  const wpNavigation = JSON.parse(await readFile(path.join(wordpressContentDir, 'navigation.json'), 'utf8'));
+  const allRecords = [...wpPages, ...wpPosts, ...wpPortfolio];
+  const routes = allRecords.map(record => record.route);
+  if (new Set(routes).size !== routes.length) throw new Error('WordPress import has duplicate output routes; refusing to silently overwrite records.');
+  const pathToRoute = new Map();
+  const slugToRoute = new Map();
+  for (const record of allRecords) {
+    try {
+      const sourcePath = decodeURIComponent(new URL(record.source_url).pathname || '/');
+      pathToRoute.set(sourcePath.endsWith('/') ? sourcePath : sourcePath + '/', record.route);
+      const lastSegment = sourcePath.split('/').filter(Boolean).pop() || '';
+      if (lastSegment) slugToRoute.set(lastSegment, record.route);
+      if (record.slug) slugToRoute.set(record.slug, record.route);
+    } catch { /* malformed source URL remains in the provenance record */ }
+  }
+  pathToRoute.set('/', '/');
+  const pageItems = wpPages.map(record => {
+    const details = record.content_html ? record.source_content_characters + ' content characters' : 'No body text in export';
+    return '<li><div><p class=\"title\"><a href=\"' + escapeHtml(record.route) + '\">' + escapeHtml(record.title) + '</a></p><p class=\"meta\">' + escapeHtml(details) + ' · <a href=\"' + escapeHtml(record.source_url) + '\">source URL</a></p></div></li>';
+  }).join('\n');
+  const pageIndexBody = '<header><div class=\"wrap\"><p><a href=\"/\">← ' + escapeHtml(site.title) + '</a></p><h1 style=\"font-size:clamp(2.5rem,9vw,4.5rem)\">WordPress pages</h1><p class=\"sub\">' + wpPages.length + ' published pages imported from the export.</p>' + wordpressNav() + '</div></header><main><section><div class=\"wrap\"><ol class=\"timeline\">' + pageItems + '</ol><p class=\"notice\">Private and draft pages were excluded. Source URLs are retained for provenance.</p></div></section></main><footer><div class=\"wrap\"><a href=\"/\">Back to catalogue</a></div></footer>';
+  await mkdir(generatedArchivePagesDir, { recursive: true });
+  await writeFile(path.join(generatedArchivePagesDir, 'index.html'), documentHtml({ title: 'WordPress pages — ' + site.title, description: 'Published pages imported from the WordPress export.', canonical: 'https://phoenxmusic.github.io/archive-pages/', body: pageIndexBody }), 'utf8');
+
+  const sortedPosts = [...wpPosts].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const postItems = sortedPosts.map(record => {
+    const terms = [...(record.categories || []), ...(record.tags || [])].map(term => term.name).filter(Boolean);
+    const meta = (record.date || '').slice(0, 10) + (terms.length ? ' · ' + terms.join(', ') : '');
+    const search = [record.title, record.excerpt, ...terms].join(' ').toLocaleLowerCase();
+    return '<li data-search=\"' + escapeHtml(search) + '\" data-year=\"' + escapeHtml((record.date || '').slice(0, 4)) + '\"><span class=\"year\">' + escapeHtml((record.date || '').slice(0, 4) || '—') + '</span><div><p class=\"title\"><a href=\"' + escapeHtml(record.route) + '\">' + escapeHtml(record.title) + '</a></p><p class=\"meta\">' + escapeHtml(meta) + '</p></div></li>';
+  }).join('\n');
+  const yearsOfPosts = [...new Set(sortedPosts.map(record => (record.date || '').slice(0, 4)).filter(year => /^\d{4}$/.test(year)))].sort((a, b) => Number(b) - Number(a));
+  const yearOptionsOfPosts = yearsOfPosts.map(year => '<option value=\"' + year + '\">' + year + '</option>').join('');
+  const journalBody = '<header><div class=\"wrap\"><p><a href=\"/\">← ' + escapeHtml(site.title) + '</a></p><h1 style=\"font-size:clamp(2.5rem,9vw,4.5rem)\">Journal</h1><p class=\"sub\">' + wpPosts.length + ' published posts, with original dates and source links retained.</p>' + wordpressNav() + '</div></header><main><section><div class=\"wrap\"><div class=\"filters\"><label for=\"post-search\">Search posts<input id=\"post-search\" type=\"search\" placeholder=\"Title, excerpt, category, or tag\" autocomplete=\"off\"></label><label for=\"post-year\">Year<select id=\"post-year\"><option value=\"\">All years</option>' + yearOptionsOfPosts + '</select></label></div><p id=\"post-count\" class=\"result-count\" aria-live=\"polite\">' + wpPosts.length + ' posts</p><ol class=\"timeline\" id=\"post-list\">' + postItems + '</ol><p id=\"post-empty\" class=\"notice\" hidden>No posts match those filters.</p></div></section></main><footer><div class=\"wrap\"><a href=\"/\">Back to catalogue</a></div></footer><script>(()=>{const q=document.getElementById(\"post-search\"),y=document.getElementById(\"post-year\"),rows=[...document.querySelectorAll(\"#post-list li\")],count=document.getElementById(\"post-count\"),empty=document.getElementById(\"post-empty\");function f(){let n=0;for(const r of rows){const show=(!q.value||r.dataset.search.includes(q.value.trim().toLocaleLowerCase()))&&(!y.value||r.dataset.year===y.value);r.hidden=!show;if(show)n++}count.textContent=n+\" of \"+rows.length+\" posts shown\";empty.hidden=n!==0}q.addEventListener(\"input\",f);y.addEventListener(\"input\",f)})();</script>';
+  await mkdir(generatedJournalDir, { recursive: true });
+  await writeFile(path.join(generatedJournalDir, 'index.html'), documentHtml({ title: 'Journal — ' + site.title, description: 'Published posts imported from the WordPress export.', canonical: 'https://phoenxmusic.github.io/journal/', body: journalBody }), 'utf8');
+
+  const mediaItemsHtml = wpMedia.map(media => {
+    const label = media.title || media.attached_file || 'Untitled attachment';
+    const meta = (media.mime_type || 'MIME type not recorded') + ' · ' + (media.date || 'Date unknown') + (media.alt ? ' · Alt: ' + media.alt : '');
+    return '<li><div><p class=\"title\">' + escapeHtml(label) + '</p><p class=\"meta\">' + escapeHtml(meta) + '</p><p class=\"small\"><a href=\"' + escapeHtml(media.url) + '\">Original media URL</a></p><p class=\"small\">' + escapeHtml(media.status) + '</p></div></li>';
+  }).join('\n');
+  const mediaBody = '<header><div class=\"wrap\"><p><a href=\"/\">← ' + escapeHtml(site.title) + '</a></p><h1 style=\"font-size:clamp(2.5rem,9vw,4.5rem)\">Media references</h1><p class=\"sub\">' + wpMedia.length + ' attachment records from the WordPress export.</p>' + wordpressNav() + '</div></header><main><section><div class=\"wrap\"><p class=\"notice\">The XML export includes media metadata and URLs, not the original file bytes. Retrieval tests returned HTTP 403 because the source WordPress site is private. These are preserved references, not copied media files.</p><ol class=\"timeline\">' + mediaItemsHtml + '</ol></div></section></main><footer><div class=\"wrap\"><a href=\"/\">Back to catalogue</a></div></footer>';
+  await mkdir(generatedMediaArchiveDir, { recursive: true });
+  await writeFile(path.join(generatedMediaArchiveDir, 'index.html'), documentHtml({ title: 'Media references — ' + site.title, description: 'WordPress media attachment URLs and metadata; binary assets remain to be retrieved.', canonical: 'https://phoenxmusic.github.io/media-archive/', body: mediaBody }), 'utf8');
+
+  for (const record of allRecords) {
+    const outputDir = routeDirectory(record.route);
+    await mkdir(outputDir, { recursive: true });
+    const bodyHtml = rewriteImportedLinks(record.content_html || '', pathToRoute, slugToRoute);
+    const terms = [...(record.categories || []), ...(record.tags || [])].map(term => term.name).filter(Boolean);
+    const metadata = '<p class=\"meta\">' + escapeHtml((record.date || '').slice(0, 10) || 'Publication date unknown') + (record.author ? ' · ' + escapeHtml(record.author) : '') + (terms.length ? ' · ' + escapeHtml([...new Set(terms)].join(', ')) : '') + '</p>';
+    const sourceLink = '<p class=\"small\">Source: <a href=\"' + escapeHtml(record.source_url) + '\">original WordPress URL</a> · Imported from the 22 October 2026 XML export.</p>';
+    const emptyContent = record.type === 'page' && record.slug.toLowerCase() === 'news' ? '<p>The source export contains no body text for this page. Browse the imported <a href=\"/journal/\">journal archive</a> for published posts.</p>' : '<p class=\"notice\">The WordPress export contains no body text for this item. Its title, source URL, and metadata are preserved.</p>';
+    const body = '<header><div class=\"wrap\"><p><a href=\"/\">← ' + escapeHtml(site.title) + '</a></p><h1 style=\"font-size:clamp(2.5rem,9vw,4.5rem)\">' + escapeHtml(record.title) + '</h1><p class=\"sub\">' + (record.type === 'post' ? 'From the original WordPress journal' : record.type === 'portfolio' ? 'Portfolio item from the original WordPress site' : 'Page from the original WordPress site') + '</p>' + wordpressNav() + '</div></header><main><article class=\"wrap page-content\">' + metadata + (bodyHtml || emptyContent) + sourceLink + '</article></main><footer><div class=\"wrap\"><a href=\"/journal/\">Journal</a> · <a href=\"/archive-pages/\">WordPress pages</a> · <a href=\"/\">Home</a></div></footer>';
+    const lang = /[\u0370-\u03ff\u1f00-\u1fff]/.test(record.title + ' ' + record.content_html) ? 'el' : 'en';
+    const description = (record.excerpt || '').replace(/<[^>]*>/g, ' ').slice(0, 240) || record.title + ' — imported from the WordPress archive.';
+    const canonical = 'https://phoenxmusic.github.io' + record.route;
+    await writeFile(path.join(outputDir, 'index.html'), documentHtml({ title: record.title + ' — ' + site.title, description, canonical, body, lang }), 'utf8');
+  }
+
+  // Add visible migration navigation to the homepage and route the old archive link to its new location.
+  let homepage = await readFile(path.join(root, 'index.html'), 'utf8');
+  homepage = homepage.replace('href=\"/about/\">About this archive', 'href=\"/archive-info/\">About this archive');
+  homepage = homepage.replace('</main>', '<section id=\"wordpress-archive\"><div class=\"wrap\"><h2>Original WordPress archive</h2><p>Published pages and posts from the supplied export are reproduced here with original dates, source links, and taxonomy metadata.</p><p><a class=\"button-link\" href=\"/about/\">About PhoenX</a> <a class=\"button-link\" href=\"/music/\">Music</a> <a class=\"button-link\" href=\"/connect/\">Connect</a> <a class=\"button-link\" href=\"/gallery/\">Gallery</a> <a class=\"button-link\" href=\"/στιχοι/\">Lyrics</a> <a class=\"button-link\" href=\"/store/\">Store</a> <a class=\"button-link\" href=\"/tour/\">Tour</a> <a class=\"button-link\" href=\"/news/\">News</a> <a class=\"button-link\" href=\"/journal/\">All posts</a></p><p class=\"small\">The media inventory contains ' + wpMedia.length + ' attachment references. The XML does not contain media bytes and the source site returned HTTP 403 during retrieval tests. See <a href=\"/media-archive/\">media reference inventory</a> for the exact URLs.</p></div></section></main>');
+  homepage = homepage.replace('<a class=\"button-link\" href=\"/journal/\">All posts</a>', '<a class=\"button-link\" href=\"/journal/\">All posts</a> <a class=\"button-link\" href=\"/archive-pages/\">All pages</a> <a class=\"button-link\" href=\"/media-archive/\">Media references</a> <a class=\"button-link\" href=\"/archive-info/\">Archive notes</a>');
+  await writeFile(path.join(root, 'index.html'), homepage, 'utf8');
+  for (const file of [path.join(generatedVideosDir, 'index.html')]) {
+    const html = await readFile(file, 'utf8');
+    await writeFile(file, html.replaceAll('href=\"/about/\">About this archive', 'href=\"/archive-info/\">About this archive'), 'utf8');
+  }
+  const audit = {
+    source: 'meniossymeon.WordPress.2026-10-22.xml',
+    imported_pages: wpPages.length,
+    imported_posts: wpPosts.length,
+    imported_portfolio_items: wpPortfolio.length,
+    media_references: wpMedia.length,
+    navigation_items: wpNavigation.length,
+    generated_content_pages: allRecords.length,
+    route_collisions: false,
+    private_or_draft_records_in_public_json: false,
+    media_binaries_copied: false,
+    media_limit: 'WXR contains references, not binary files; WordPress source returns HTTP 403 without authenticated access.'
+  };
+  await writeFile(path.join(wordpressContentDir, 'build-audit.json'), JSON.stringify(audit, null, 2) + '\n', 'utf8');
+  console.log('Imported WordPress archive: ' + wpPages.length + ' pages, ' + wpPosts.length + ' posts, ' + wpPortfolio.length + ' portfolio items, ' + wpMedia.length + ' media references, ' + wpNavigation.length + ' navigation records.');
+} else {
+  console.log('WordPress export has not been imported yet; built the PhoenX release catalogue only.');
+}
 
 for (const r of releases) {
   const releaseUrl = `https://phoenxmusic.github.io/releases/${r.slug}/`;

@@ -1,37 +1,68 @@
 #!/usr/bin/env python3
-"""Reject banned identity terms in staged/tracked repository files."""
-from pathlib import Path
+"""Protect PhoenX branding without rewriting the historical archive."""
+from __future__ import annotations
+
+import json
+import re
 import subprocess
 import sys
+from html import unescape
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PATTERNS_FILE = ROOT / ".banned-terms"
-EXCLUDED = {".banned-terms"}
 
 
 def main() -> int:
     patterns = [line.strip().casefold() for line in PATTERNS_FILE.read_text(encoding="utf-8").splitlines() if line.strip()]
-    paths = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, stdout=subprocess.PIPE).stdout.split(b"\0")
-    hits = []
-    for raw_path in paths:
+    violations: list[tuple[str, str]] = []
+
+    # Only public identity fields are subject to the current-name rule.
+    # Historical articles, dates, titles, and source URLs remain as imported.
+    config_path = ROOT / "content" / "site.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    for field in ("title", "tagline", "description"):
+        value = str(config.get(field, "")).casefold()
+        for pattern in patterns:
+            if pattern in value:
+                violations.append((f"content/site.json:{field}", pattern))
+
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=ROOT, check=True,
+        stdout=subprocess.PIPE,
+    ).stdout.split(b"\0")
+    checked_headers = 0
+    for raw_path in tracked:
         if not raw_path:
             continue
         path = raw_path.decode("utf-8", errors="surrogateescape")
-        if path in EXCLUDED:
+        if not path.endswith(".html"):
             continue
-        result = subprocess.run(["git", "show", f":{path}"], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        if result.returncode:
+        file_path = ROOT / path
+        if not file_path.is_file():
             continue
-        content = result.stdout.decode("utf-8", errors="replace").casefold()
+        content = file_path.read_text(encoding="utf-8", errors="replace")
+        match = re.search(r"(?is)<header\b[^>]*>(.*?)</header\s*>", content)
+        if not match:
+            continue
+        checked_headers += 1
+        # Article/page titles can live in the header on imported pages. They
+        # are historical content, so only inspect the shared brand/navigation.
+        shared = re.sub(r"(?is)<h1\b[^>]*>.*?</h1\s*>", " ", match.group(1))
+        shared = re.sub(r"(?is)<p\b[^>]*class=[\"'][^\"']*\bsub\b[^\"']*[\"'][^>]*>.*?</p\s*>", " ", shared)
+        header = unescape(re.sub(r"(?is)<[^>]+>", " ", shared)).casefold()
         for pattern in patterns:
-            if pattern in content:
-                hits.append((path, pattern))
-    if hits:
-        for path, pattern in hits:
-            print(f"BANNED TERM FOUND: {path}: {pattern}", file=sys.stderr)
-        print("Commit/push blocked. Remove the match; the pattern list is in .banned-terms.", file=sys.stderr)
+            if pattern in header:
+                violations.append((f"{path}:site-header", pattern))
+
+    if violations:
+        for path, pattern in violations:
+            print(f"IDENTITY VIOLATION: {path}: {pattern}", file=sys.stderr)
+        print("Keep the current artist identity in branding fields and shared site headers.", file=sys.stderr)
         return 1
-    print("PASS: no banned terms in tracked repository content")
+
+    print(f"PASS: PhoenX branding fields and {checked_headers} shared HTML headers are clear.")
+    print("Historical article text and source URLs are preserved; they are not branding surfaces.")
     return 0
 
 

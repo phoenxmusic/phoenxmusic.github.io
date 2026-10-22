@@ -30,7 +30,7 @@ jobs:
         run: node scripts/check-build.mjs
       - name: Stage generated site and run identity check
         run: |
-          git add index.html .nojekyll releases/ about/ videos/
+          git add -A
           python scripts/check_banned_terms.py
           git diff --cached --check
       - name: Commit generated site when it changed

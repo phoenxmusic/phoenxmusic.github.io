@@ -1,0 +1,21 @@
+{
+  "source_filename": "meniossymeon.WordPress.2026-10-22.xml",
+  "source_bytes": 1465463,
+  "source_record_count": 341,
+  "published_imported": {
+    "portfolio": 1,
+    "page": 19,
+    "post": 109
+  },
+  "published_total": 129,
+  "media_reference_count": 150,
+  "navigation_item_count": 39,
+  "excluded_nonpublic_records": {
+    "page:private": 3,
+    "page:draft": 2,
+    "post:draft": 6,
+    "post:private": 11
+  },
+  "media_binary_migration": "not possible from WXR alone: export contains URLs/metadata, not binary files; WordPress source returned HTTP 403 during retrieval test",
+  "imported_at_utc": "2026-10-22T04:07:47Z"
+}

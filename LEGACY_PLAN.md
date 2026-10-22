@@ -139,6 +139,7 @@ MUSIC-LEGACY/
 - 2026-10-22: Initial freeze on static-site feature expansion was superseded by the owner's explicit decision to rebuild on GitHub Pages and test its editing flexibility. WordPress remains untouched; Wix is not the chosen destination. Use a review branch and evidence-based checks before production deployment.
 - 2026-10-22: Add a data-driven homepage settings file, Pages CMS fields for release artwork/video metadata, a searchable/filterable catalogue, an archive-information page, and a separate index for unmatched video IDs. This is a flexibility experiment; the Pages CMS account connection and a real no-code save remain unverified until tested.
 - 2026-10-22: Do not assign the 13 unmapped YouTube IDs to releases without evidence.
+- 2026-10-22: Import the published WordPress export into the GitHub Pages rebuild: 19 pages, 109 posts, one portfolio item, 150 media attachment references, and 39 navigation records. Private/draft content is excluded. The WXR export does not include media binaries and the WordPress source returned HTTP 403 for page/API/media retrieval, so binary media migration remains blocked and is explicitly reported.
 
 ## Status vocabulary
 
