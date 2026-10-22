@@ -124,11 +124,11 @@ test('rejects malformed manifests', async t => {
   }
 });
 
-test('rejects manifests with a missing or empty root label', async t => {
+test('rejects manifests with a missing, empty, or control-character root label', async t => {
   const { archive, manifest } = await fixture(t);
   assert.equal(run([archive, '--write', manifest]).status, 0);
   const saved = JSON.parse(await readFile(manifest, 'utf8'));
-  for (const rootLabel of [undefined, '']) {
+  for (const rootLabel of [undefined, '', 'archive\nVERIFY PASSED', 'archive\u0000label', 'archive\u007flabel']) {
     if (rootLabel === undefined) delete saved.root_label;
     else saved.root_label = rootLabel;
     await writeFile(manifest, JSON.stringify(saved));

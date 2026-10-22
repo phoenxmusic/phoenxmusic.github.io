@@ -194,6 +194,7 @@ if (verifyPath) {
     expected.files.every(item => !directorySet.has(item.path) && hasAllParents(item.path));
   if (expected.format !== 'phoenx-archive-manifest-v2' || expected.hash_algorithm !== 'SHA-256' ||
       typeof expected.root_label !== 'string' || expected.root_label.length === 0 ||
+      /[\u0000-\u001f\u007f]/.test(expected.root_label) ||
       !validFileEntries || new Set(paths).size !== paths.length ||
       !validDirectoryEntries || new Set(expected.directories).size !== expected.directories.length ||
       !validTreeLayout ||
