@@ -53,7 +53,8 @@ const isValidDate = value => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}(?:$|[Tt ].*)$/.test(value)) return false;
   const day = value.slice(0, 10);
   const parsed = new Date(`${day}T00:00:00.000Z`);
-  return !Number.isNaN(parsed.valueOf()) && parsed.toISOString().slice(0, 10) === day;
+  if (Number.isNaN(parsed.valueOf()) || parsed.toISOString().slice(0, 10) !== day) return false;
+  return value.length === 10 || (value.slice(10).trim().length > 0 && !Number.isNaN(Date.parse(value)));
 };
 const invalidUrlRecords = records.filter(record => {
   try {

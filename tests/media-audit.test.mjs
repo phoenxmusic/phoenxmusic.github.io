@@ -148,6 +148,7 @@ test('reports missing and impossible calendar dates without modifying source met
     { id: 1, title: 'missing date', url: 'https://example.com/a.mp3', date: '' },
     { id: 2, title: 'impossible date', url: 'https://example.com/b.mp3', date: '2025-02-29' },
     { id: 3, title: 'valid leap day', url: 'https://example.com/c.mp3', date: '2024-02-29' },
+    { id: 4, title: 'invalid timestamp', url: 'https://example.com/d.mp3', date: '2024-02-29Tnot-a-time' },
   ];
   const input = path.join(contentDir, 'media.json');
   await writeFile(input, JSON.stringify(source));
@@ -159,7 +160,7 @@ test('reports missing and impossible calendar dates without modifying source met
   assert.equal(result.status, 0, result.stderr);
   const report = JSON.parse(result.stdout);
   assert.deepEqual(report.missing_date_records.map(record => record.id), [1]);
-  assert.deepEqual(report.invalid_date_records.map(record => record.id), [2]);
+  assert.deepEqual(report.invalid_date_records.map(record => record.id), [2, 4]);
   assert.deepEqual(JSON.parse(await readFile(input, 'utf8')), source);
 });
 
