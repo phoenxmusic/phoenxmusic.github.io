@@ -3,6 +3,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { retryAfterDelayMs } from './retry-after.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const baseUrl = (process.env.PHOENX_SITE_URL || 'https://phoenxmusic.github.io').replace(/\/$/, '');
@@ -57,10 +58,8 @@ async function check(url, expectedTitle, label) {
         continue;
       }
       if (!retryableStatuses.has(response.status) || attempt === maxAttempts) break;
-      const retryAfter = Number(response.headers.get('retry-after'));
-      const delay = Number.isFinite(retryAfter) && retryAfter >= 0
-        ? Math.min(5000, retryAfter * 1000)
-        : 500 * (2 ** (attempt - 1));
+      const retryAfterDelay = retryAfterDelayMs(response.headers.get('retry-after'));
+      const delay = retryAfterDelay ?? 500 * (2 ** (attempt - 1));
       console.warn(`RETRY ${label} attempt ${attempt + 1}/${maxAttempts} after HTTP ${response.status}; waiting ${delay}ms`);
       await response.body?.cancel();
       await sleep(delay);
