@@ -22,6 +22,7 @@ if (!validArgs) {
 
 const records = JSON.parse(await readFile(input, 'utf8'));
 if (!Array.isArray(records)) throw new Error('Media inventory must be a JSON array.');
+if (records.length === 0) throw new Error('Media inventory is empty; refusing to treat an empty attachment register as a valid audit.');
 const invalidRecordIndex = records.findIndex(record =>
   !record || typeof record !== 'object' || Array.isArray(record) ||
   (typeof record.id !== 'string' && typeof record.id !== 'number') || String(record.id).trim() === '' ||

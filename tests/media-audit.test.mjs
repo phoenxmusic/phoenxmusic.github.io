@@ -92,6 +92,25 @@ test('fails clearly when the attachment register contains malformed records', as
   }
 });
 
+test('fails closed when the attachment register is unexpectedly empty', async t => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-empty-'));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const scriptsDir = path.join(temp, 'scripts');
+  const contentDir = path.join(temp, 'content', 'wordpress');
+  await mkdir(scriptsDir, { recursive: true });
+  await mkdir(contentDir, { recursive: true });
+  const scriptCopy = path.join(scriptsDir, 'audit-media-inventory.mjs');
+  await writeFile(scriptCopy, await readFile(script, 'utf8'));
+  await writeFile(path.join(contentDir, 'media.json'), '[]\n');
+
+  const result = spawnSync(process.execPath, [scriptCopy], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /Media inventory is empty/);
+});
+
 test('rejects duplicate attachment identifiers instead of conflating records', async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-duplicate-id-'));
   t.after(() => rm(temp, { recursive: true, force: true }));
