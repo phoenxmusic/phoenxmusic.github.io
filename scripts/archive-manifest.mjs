@@ -100,7 +100,12 @@ async function walk(directory, expectedIdentity = null) {
       // the directory walk and could make an external target look like the
       // original in-archive file.
       const pathAfter = await lstat(fullPath, { bigint: true });
-      if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size ||
+      // The file may have been replaced between lstat() and open(). Bind the
+      // opened handle to the entry observed by the directory walk before
+      // trusting any bytes read from it.
+      if (info.dev !== before.dev || info.ino !== before.ino || info.size !== before.size ||
+          info.mtimeNs !== before.mtimeNs || info.ctimeNs !== before.ctimeNs ||
+          before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size ||
           before.mtimeNs !== after.mtimeNs || before.ctimeNs !== after.ctimeNs ||
           pathAfter.isSymbolicLink() || !pathAfter.isFile() ||
           after.dev !== pathAfter.dev || after.ino !== pathAfter.ino ||
