@@ -42,7 +42,7 @@ This procedure is for the **real source archive**, not the generated website. Th
    node scripts/archive-manifest.mjs 'W:\BACKUP-2\MUSIC-LEGACY' --verify 'Y:\SEPARATE\PhoenX-backup-records\source-manifest.json'
    ```
 
-   A pass means file paths, sizes, SHA-256 hashes, and directory layout match the manifest. Empty directories are recorded too. A failure must be investigated; do not overwrite the baseline manifest to make the check pass.
+   A pass means file paths, sizes, SHA-256 hashes, and directory layout match the manifest. Empty directories are recorded too. The tool fails closed on symbolic links and on filesystem objects that are neither regular files nor directories; it does not silently omit them. A failure must be investigated; do not overwrite the baseline manifest to make the check pass.
 
 6. **Test restoreability.** Restore a representative selection—and eventually a complete copy—into a new, empty test location. Verify the restored copy against the baseline manifest. Open/play representative audio and video files using appropriate software; checksums alone do not establish that files are playable or complete.
 
@@ -54,7 +54,7 @@ This procedure is for the **real source archive**, not the generated website. Th
 - A baseline manifest was generated from that source and stored separately.
 - At least two independent copies exist in addition to the source, and each verifies against the baseline.
 - A restore test is documented.
-- Any missing files, unreadable media, symlinks, zero-byte files, or unexpected differences are explicitly tracked.
+- Any missing files, unreadable media, symlinks, unsupported filesystem objects, zero-byte files, or unexpected differences are explicitly tracked.
 
 **Current status:** Not yet completed. The actual source archive has not been exposed to this DevSpace workspace, and no real-archive inventory, backup verification, or restore test is claimed.
 
@@ -73,7 +73,7 @@ Source top-level item count and approximate size:
 Source idle before hashing (yes/no):
 Inventory command and tool/repository commit:
 Manifest storage location and SHA-256 of manifest:
-Inventory result (file count / directory count / total bytes / zero-byte files / symlinks):
+Inventory result (file count / directory count / total bytes / zero-byte files / symlinks / unsupported objects):
 Backup 1 device/location and copy date:
 Backup 1 verification result and output location:
 Backup 2 device/location and copy date:
