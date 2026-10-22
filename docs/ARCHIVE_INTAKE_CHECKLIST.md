@@ -44,6 +44,8 @@ This procedure is for the **real source archive**, not the generated website. Th
 
    A pass means file paths, sizes, SHA-256 hashes, and directory layout match the manifest. Empty directories are recorded too. The tool fails closed on symbolic links and on filesystem objects that are neither regular files nor directories; it does not silently omit them. A failure must be investigated; do not overwrite the baseline manifest to make the check pass.
 
+   The manifest also binds verification to the archive's root directory name. Keep the source and both backup directory basenames identical (as in the examples above); if a backup must use a different name, stop and deliberately create and document a separate baseline for that named copy rather than weakening the identity check.
+
 6. **Test restoreability.** Restore a representative selection—and eventually a complete copy—into a new, empty test location. Verify the restored copy against the baseline manifest. Open/play representative audio and video files using appropriate software; checksums alone do not establish that files are playable or complete.
 
 7. **Record evidence.** Keep the manifest, verification output, copy dates, device/location identifiers, exceptions, and restore-test results. Avoid placing private file contents or sensitive personal data in a public repository.
