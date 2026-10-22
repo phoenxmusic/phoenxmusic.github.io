@@ -1,0 +1,22 @@
+name: PhoenX legacy site monitor
+
+on:
+  schedule:
+    - cron: '17 9 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-public-catalogue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out catalogue source
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Check live homepage and every release page
+        run: node scripts/check-live-site.mjs

@@ -27,5 +27,6 @@ The script writes the generated `index.html`, `.nojekyll`, and `releases/<slug>/
 
 - Read [`LEGACY_PLAN.md`](LEGACY_PLAN.md) for the preservation, hosting, marketing, monitoring, and succession roadmap.
 - [`content/marketing/`](content/marketing/) contains planning-only evergreen promotion briefs. Nothing in that folder is published automatically.
+- The **PhoenX legacy site monitor** workflow runs monthly and can also be started manually from the repository's **Actions** tab. It checks the live homepage and all release pages, expected titles, and homepage catalogue links; it does not verify media playback or archival backups.
 - Use the read-only archive inventory tool against an actual archive directory: `node scripts/archive-manifest.mjs "PATH-TO-MUSIC-LEGACY"`. It prints file sizes and SHA-256 hashes without writing files. To save a new manifest, add `--write "PATH-TO-MUSIC-LEGACY/99_ARCHIVE_MANIFEST/manifest.json"`; the destination must not already exist.
 - The tool has only been tested against the nine Markdown release records so far. The master audio, artwork, video, and backup copies have not yet been inventoried or verified.
