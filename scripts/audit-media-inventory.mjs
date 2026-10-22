@@ -50,7 +50,10 @@ const urlCounts = new Map();
 for (const record of records) if (record.url) urlCounts.set(record.url, (urlCounts.get(record.url) || 0) + 1);
 const duplicateUrls = [...urlCounts].filter(([, count]) => count > 1).map(([url, count]) => ({ url, count }));
 const invalidUrlRecords = records.filter(record => {
-  try { const url = new URL(record.url); return url.protocol !== 'https:'; }
+  try {
+    const url = new URL(record.url);
+    return !/^https:\/\//i.test(record.url) || url.protocol !== 'https:' || !url.hostname || Boolean(url.username || url.password);
+  }
   catch { return true; }
 }).map(record => ({ id: record.id, title: record.title, url: record.url || null }));
 const report = {
