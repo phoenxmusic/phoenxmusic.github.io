@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -106,4 +106,22 @@ test('rejects unsafe paths and duplicate entries in a manifest', async t => {
   const duplicate = run([archive, '--verify', manifest]);
   assert.notEqual(duplicate.status, 0);
   assert.match(duplicate.stderr, /Unsupported or malformed archive manifest/);
+});
+
+test('refuses to claim a complete inventory when the archive contains a symlink', async t => {
+  const { archive } = await fixture(t);
+  try {
+    await symlink(path.join(archive, 'master.txt'), path.join(archive, 'master-link.txt'));
+  } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOSYS', 'ENOTSUP'].includes(error.code)) {
+      t.skip(`Symlink creation is not permitted in this environment (${error.code})`);
+      return;
+    }
+    throw error;
+  }
+
+  const result = run([archive]);
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /symbolic link\(s\) found/);
+  assert.match(result.stderr, /SYMLINK master-link\.txt/);
 });
