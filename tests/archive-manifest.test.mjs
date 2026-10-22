@@ -14,6 +14,7 @@ async function fixture(t) {
   t.after(() => rm(temp, { recursive: true, force: true }));
   const archive = path.join(temp, 'archive');
   await mkdir(path.join(archive, 'artwork'), { recursive: true });
+  await mkdir(path.join(archive, 'empty-folder'));
   await writeFile(path.join(archive, 'artwork', 'cover.txt'), 'original cover bytes\n');
   await writeFile(path.join(archive, 'master.txt'), 'original master bytes\n');
   return { temp, archive, manifest: path.join(temp, 'manifest.json') };
@@ -28,14 +29,16 @@ test('writes and verifies a read-only SHA-256 inventory', async t => {
   const created = run([archive, '--write', manifest]);
   assert.equal(created.status, 0, created.stderr || created.stdout);
   const saved = JSON.parse(await readFile(manifest, 'utf8'));
-  assert.equal(saved.format, 'phoenx-archive-manifest-v1');
+  assert.equal(saved.format, 'phoenx-archive-manifest-v2');
   assert.equal(saved.file_count, 2);
+  assert.equal(saved.directory_count, 2);
+  assert.deepEqual(saved.directories, ['artwork', 'empty-folder']);
   assert.deepEqual(saved.inventory_summary.category_counts, { other: 2 });
   assert.deepEqual(saved.inventory_summary.zero_byte_files, []);
   assert.deepEqual(saved.inventory_summary.duplicate_content_groups, []);
   const verified = run([archive, '--verify', manifest]);
   assert.equal(verified.status, 0, verified.stderr || verified.stdout);
-  assert.match(verified.stdout, /VERIFY PASSED: 2 files match manifest SHA-256 hashes and sizes/);
+  assert.match(verified.stdout, /VERIFY PASSED: 2 files and 2 directories match the manifest/);
 });
 
 test('summarizes media categories, zero-byte files, and byte-identical duplicates', async t => {
@@ -72,6 +75,17 @@ test('detects missing and unexpected files', async t => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /MISSING master\.txt/);
   assert.match(result.stderr, /UNEXPECTED new\.txt/);
+});
+
+test('detects missing and unexpected directories, including empty folders', async t => {
+  const { archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  await rm(path.join(archive, 'empty-folder'), { recursive: true });
+  await mkdir(path.join(archive, 'new-empty-folder'));
+  const result = run([archive, '--verify', manifest]);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /MISSING DIRECTORY empty-folder/);
+  assert.match(result.stderr, /UNEXPECTED DIRECTORY new-empty-folder/);
 });
 
 test('rejects malformed manifests', async t => {

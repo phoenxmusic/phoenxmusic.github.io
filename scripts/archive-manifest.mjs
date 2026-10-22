@@ -49,6 +49,7 @@ if (isWithinRoot(output) || isWithinRoot(verifyPath)) {
   throw new Error('Manifest input/output must be stored outside the archive directory.');
 }
 const files = [];
+const directories = [];
 const symlinks = [];
 
 async function walk(directory) {
@@ -63,6 +64,7 @@ async function walk(directory) {
       continue;
     }
     if (info.isDirectory()) {
+      directories.push(path.relative(root, fullPath).split(path.sep).join('/'));
       await walk(fullPath);
       continue;
     }
@@ -100,13 +102,14 @@ async function walk(directory) {
 
 await walk(root);
 files.sort((a, b) => a.path.localeCompare(b.path, 'en'));
+directories.sort((a, b) => a.localeCompare(b, 'en'));
 if (symlinks.length) {
   console.error(`ERROR: ${symlinks.length} symbolic link(s) found. Resolve them explicitly before treating this as a complete archive manifest.`);
   for (const link of symlinks) console.error(`SYMLINK ${link}`);
   process.exit(1);
 }
 
-const manifest = { format: 'phoenx-archive-manifest-v1', hash_algorithm: 'SHA-256', root_label: path.basename(root), file_count: files.length, total_size_bytes: files.reduce((sum, item) => sum + item.size_bytes, 0), files };
+const manifest = { format: 'phoenx-archive-manifest-v2', hash_algorithm: 'SHA-256', root_label: path.basename(root), file_count: files.length, directory_count: directories.length, total_size_bytes: files.reduce((sum, item) => sum + item.size_bytes, 0), directories, files };
 const mediaCategory = filename => {
   const ext = path.extname(filename).toLowerCase();
   if (['.wav', '.flac', '.aiff', '.aif', '.mp3', '.m4a', '.aac', '.ogg', '.opus', '.wma'].includes(ext)) return 'audio';
@@ -154,8 +157,15 @@ if (verifyPath) {
     typeof item.sha256 === 'string' && /^[a-f0-9]{64}$/.test(item.sha256));
   const paths = validFileEntries ? expected.files.map(item => item.path) : [];
   const computedTotal = validFileEntries ? expected.files.reduce((sum, item) => sum + item.size_bytes, 0) : NaN;
-  if (expected.format !== 'phoenx-archive-manifest-v1' || expected.hash_algorithm !== 'SHA-256' ||
+  const validDirectoryEntries = Array.isArray(expected.directories) && expected.directories.every(item =>
+    typeof item === 'string' && item.length > 0 &&
+    !path.posix.isAbsolute(item) && !item.includes('\\') &&
+    item.split('/').every(part => part !== '' && part !== '.' && part !== '..') &&
+    path.posix.normalize(item) === item && !/[\u0000-\u001f]/.test(item));
+  if (expected.format !== 'phoenx-archive-manifest-v2' || expected.hash_algorithm !== 'SHA-256' ||
       !validFileEntries || new Set(paths).size !== paths.length ||
+      !validDirectoryEntries || new Set(expected.directories).size !== expected.directories.length ||
+      expected.directory_count !== expected.directories.length ||
       expected.file_count !== expected.files.length ||
       !Number.isSafeInteger(computedTotal) || expected.total_size_bytes !== computedTotal) {
     throw new Error(`Unsupported or malformed archive manifest: ${verifyPath}`);
@@ -163,6 +173,14 @@ if (verifyPath) {
   const byPath = new Map(files.map(item => [item.path, item]));
   const expectedByPath = new Map(expected.files.map(item => [item.path, item]));
   const problems = [];
+  const actualDirectories = new Set(directories);
+  const expectedDirectories = new Set(expected.directories);
+  for (const directory of expected.directories) {
+    if (!actualDirectories.has(directory)) problems.push(`MISSING DIRECTORY ${directory}`);
+  }
+  for (const directory of directories) {
+    if (!expectedDirectories.has(directory)) problems.push(`UNEXPECTED DIRECTORY ${directory}`);
+  }
   for (const item of expected.files) {
     const actual = byPath.get(item.path);
     if (!actual) problems.push(`MISSING ${item.path}`);
@@ -177,12 +195,12 @@ if (verifyPath) {
     for (const problem of problems) console.error(problem);
     process.exit(1);
   }
-  console.log(`VERIFY PASSED: ${files.length} files match manifest SHA-256 hashes and sizes (${manifest.total_size_bytes} bytes).`);
+  console.log(`VERIFY PASSED: ${files.length} files and ${directories.length} directories match the manifest (${manifest.total_size_bytes} file bytes; SHA-256 hashes and sizes verified).`);
 } else if (output) {
   await writeFile(output, json, { encoding: 'utf8', flag: 'wx' });
-  console.log(`Wrote ${path.relative(process.cwd(), output)}: ${files.length} files, ${manifest.total_size_bytes} bytes; ${manifest.inventory_summary.zero_byte_files.length} zero-byte files; ${duplicateContent.length} duplicate-content groups.`);
+  console.log(`Wrote ${path.relative(process.cwd(), output)}: ${files.length} files, ${directories.length} directories, ${manifest.total_size_bytes} file bytes; ${manifest.inventory_summary.zero_byte_files.length} zero-byte files; ${duplicateContent.length} duplicate-content groups.`);
 } else {
-  console.log(`Read-only inventory: ${files.length} files, ${manifest.total_size_bytes} bytes. No files written.`);
+  console.log(`Read-only inventory: ${files.length} files, ${directories.length} directories, ${manifest.total_size_bytes} file bytes. No files written.`);
   console.log(`Categories: ${Object.entries(manifest.inventory_summary.category_counts).map(([category, count]) => `${category}=${count}`).join(', ') || 'none'}`);
   console.log(`Zero-byte files: ${manifest.inventory_summary.zero_byte_files.length}; duplicate-content groups: ${duplicateContent.length}; symlinks: ${symlinks.length}.`);
   for (const item of files) console.log(`${item.sha256}  ${item.size_bytes}  ${item.path}`);
