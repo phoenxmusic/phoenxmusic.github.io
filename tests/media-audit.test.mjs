@@ -29,6 +29,41 @@ test('rejects unsupported or conflicting media-audit command-line arguments', ()
   }
 });
 
+test('supports summary, consistency-check, and create-only report modes', async t => {
+  const summary = spawnSync(process.execPath, [script, '--summary'], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.equal(summary.status, 0, summary.stderr);
+  const summaryReport = JSON.parse(summary.stdout);
+  assert.equal(summaryReport.total_records, 150);
+  assert.equal(summaryReport.unique_nonempty_urls, 150);
+
+  const check = spawnSync(process.execPath, [script, '--check'], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.equal(check.status, 0, check.stderr);
+  assert.match(check.stdout, /MEDIA AUDIT PASSED/);
+
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-write-'));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const output = path.join(temp, 'report.json');
+  const write = spawnSync(process.execPath, [script, '--write', output], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.equal(write.status, 0, write.stderr);
+  const writtenReport = JSON.parse(await readFile(output, 'utf8'));
+  assert.equal(writtenReport.total_records, 150);
+
+  const overwrite = spawnSync(process.execPath, [script, '--write', output], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
+  assert.notEqual(overwrite.status, 0, 'report creation must not overwrite an existing file');
+});
+
 test('fails clearly when the attachment register contains malformed records', async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-test-'));
   t.after(() => rm(temp, { recursive: true, force: true }));
