@@ -3,7 +3,8 @@
 // Default is read-only: print a summary. Use --write PATH to save the JSON manifest.
 // Symlinks are rejected rather than silently followed, and no source files are modified.
 import { createHash } from 'node:crypto';
-import { readdir, readFile, lstat, writeFile } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { readdir, readFile, lstat, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -44,8 +45,19 @@ async function walk(directory) {
       continue;
     }
     if (!info.isFile()) continue;
-    const bytes = await readFile(fullPath);
-    files.push({ path: path.relative(root, fullPath).split(path.sep).join('/'), size_bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') });
+    // Stream files so large WAV/video masters do not need to fit in RAM.
+    const before = await stat(fullPath);
+    const hash = createHash('sha256');
+    let sizeBytes = 0;
+    for await (const chunk of createReadStream(fullPath)) {
+      hash.update(chunk);
+      sizeBytes += chunk.length;
+    }
+    const after = await stat(fullPath);
+    if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || sizeBytes !== after.size) {
+      throw new Error(`File changed while being inventoried; retry with the archive idle: ${fullPath}`);
+    }
+    files.push({ path: path.relative(root, fullPath).split(path.sep).join('/'), size_bytes: sizeBytes, sha256: hash.digest('hex') });
   }
 }
 
@@ -87,7 +99,16 @@ manifest.inventory_summary = {
 const json = `${JSON.stringify(manifest, null, 2)}\n`;
 if (verifyPath) {
   const expected = JSON.parse(await readFile(verifyPath, 'utf8'));
-  if (expected.format !== 'phoenx-archive-manifest-v1' || expected.hash_algorithm !== 'SHA-256' || !Array.isArray(expected.files)) {
+  const validFileEntries = Array.isArray(expected.files) && expected.files.every(item =>
+    item && typeof item.path === 'string' && item.path.length > 0 &&
+    !path.posix.isAbsolute(item.path) && !item.path.split('/').includes('..') &&
+    Number.isSafeInteger(item.size_bytes) && item.size_bytes >= 0 &&
+    typeof item.sha256 === 'string' && /^[a-f0-9]{64}$/.test(item.sha256));
+  const paths = validFileEntries ? expected.files.map(item => item.path) : [];
+  if (expected.format !== 'phoenx-archive-manifest-v1' || expected.hash_algorithm !== 'SHA-256' ||
+      !validFileEntries || new Set(paths).size !== paths.length ||
+      expected.file_count !== expected.files.length ||
+      expected.total_size_bytes !== expected.files.reduce((sum, item) => sum + item.size_bytes, 0)) {
     throw new Error(`Unsupported or malformed archive manifest: ${verifyPath}`);
   }
   const byPath = new Map(files.map(item => [item.path, item]));

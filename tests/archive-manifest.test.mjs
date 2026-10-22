@@ -81,3 +81,21 @@ test('rejects malformed manifests', async t => {
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /Unsupported or malformed archive manifest/);
 });
+
+test('rejects unsafe paths and duplicate entries in a manifest', async t => {
+  const { archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  saved.files[0].path = '../outside.txt';
+  await writeFile(manifest, JSON.stringify(saved));
+  const unsafe = run([archive, '--verify', manifest]);
+  assert.notEqual(unsafe.status, 0);
+  assert.match(unsafe.stderr, /Unsupported or malformed archive manifest/);
+
+  saved.files[0].path = saved.files[1].path;
+  saved.total_size_bytes = saved.files.reduce((sum, item) => sum + item.size_bytes, 0);
+  await writeFile(manifest, JSON.stringify(saved));
+  const duplicate = run([archive, '--verify', manifest]);
+  assert.notEqual(duplicate.status, 0);
+  assert.match(duplicate.stderr, /Unsupported or malformed archive manifest/);
+});
