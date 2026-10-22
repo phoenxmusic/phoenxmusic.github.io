@@ -3,8 +3,7 @@
 // Default is read-only: print a summary. Use --write PATH to save the JSON manifest.
 // Symlinks are rejected rather than silently followed, and no source files are modified.
 import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { readdir, readFile, lstat, stat, realpath, writeFile } from 'node:fs/promises';
+import { readdir, readFile, lstat, stat, realpath, writeFile, open } from 'node:fs/promises';
 import path from 'node:path';
 
 const args = process.argv.slice(2);
@@ -68,19 +67,30 @@ async function walk(directory) {
       continue;
     }
     if (!info.isFile()) continue;
-    // Stream files so large WAV/video masters do not need to fit in RAM.
-    const before = await stat(fullPath);
-    const hash = createHash('sha256');
-    let sizeBytes = 0;
-    for await (const chunk of createReadStream(fullPath)) {
-      hash.update(chunk);
-      sizeBytes += chunk.length;
+    // Hash an open handle so a path replacement cannot silently switch the
+    // file being read. Compare handle metadata and the final path identity too.
+    // Streaming keeps large WAV/video masters out of RAM.
+    const handle = await open(fullPath, 'r');
+    try {
+      const before = await handle.stat({ bigint: true });
+      const hash = createHash('sha256');
+      let sizeBytes = 0;
+      for await (const chunk of handle.createReadStream({ autoClose: false })) {
+        hash.update(chunk);
+        sizeBytes += chunk.length;
+      }
+      const after = await handle.stat({ bigint: true });
+      const pathAfter = await stat(fullPath, { bigint: true });
+      if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size ||
+          before.mtimeNs !== after.mtimeNs || before.ctimeNs !== after.ctimeNs ||
+          after.dev !== pathAfter.dev || after.ino !== pathAfter.ino ||
+          BigInt(sizeBytes) !== after.size) {
+        throw new Error(`File changed while being inventoried; retry with the archive idle: ${fullPath}`);
+      }
+      files.push({ path: path.relative(root, fullPath).split(path.sep).join('/'), size_bytes: sizeBytes, sha256: hash.digest('hex') });
+    } finally {
+      await handle.close();
     }
-    const after = await stat(fullPath);
-    if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || sizeBytes !== after.size) {
-      throw new Error(`File changed while being inventoried; retry with the archive idle: ${fullPath}`);
-    }
-    files.push({ path: path.relative(root, fullPath).split(path.sep).join('/'), size_bytes: sizeBytes, sha256: hash.digest('hex') });
   }
 }
 
