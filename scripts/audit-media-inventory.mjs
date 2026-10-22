@@ -11,7 +11,11 @@ const writeIndex = args.indexOf('--write');
 const output = writeIndex >= 0 ? args[writeIndex + 1] : null;
 const summaryOnly = args.includes('--summary');
 const checkReport = args.includes('--check');
-if ((writeIndex >= 0 && (!output || output.startsWith('--'))) || (writeIndex >= 0 && checkReport)) {
+const validArgs = args.length === 0 ||
+  (args.length === 1 && summaryOnly) ||
+  (args.length === 1 && checkReport) ||
+  (args.length === 2 && writeIndex === 0 && Boolean(output) && !output.startsWith('--'));
+if (!validArgs) {
   console.error('Usage: node scripts/audit-media-inventory.mjs [--summary | --write <new-report.json> | --check]');
   process.exit(2);
 }
