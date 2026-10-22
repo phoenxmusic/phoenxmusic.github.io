@@ -1,6 +1,7 @@
 import { readdir, readFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateSeoAssets } from './seo-assets.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourceDir = path.join(root, 'content', 'releases');
@@ -283,3 +284,5 @@ for (const r of releases) {
 }
 
 console.log(`Built homepage, about page, video archive (${youtubeVideos.length} public YouTube videos; ${uniqueVideoIds.length} legacy IDs retained), and ${releases.length} permanent release pages.`);
+const seoSummary = await generateSeoAssets(root);
+console.log(`Generated sitemap.xml and robots.txt from ${seoSummary.urls} canonical routes (${seoSummary.htmlFiles} eligible HTML files scanned; ${seoSummary.ignored} excluded or missing canonical URLs).`);
