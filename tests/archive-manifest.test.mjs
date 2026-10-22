@@ -124,6 +124,20 @@ test('rejects malformed manifests', async t => {
   }
 });
 
+test('rejects manifests with a missing or empty root label', async t => {
+  const { archive, manifest } = await fixture(t);
+  assert.equal(run([archive, '--write', manifest]).status, 0);
+  const saved = JSON.parse(await readFile(manifest, 'utf8'));
+  for (const rootLabel of [undefined, '']) {
+    if (rootLabel === undefined) delete saved.root_label;
+    else saved.root_label = rootLabel;
+    await writeFile(manifest, JSON.stringify(saved));
+    const result = run([archive, '--verify', manifest]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+  }
+});
+
 test('refuses to overwrite an existing manifest', async t => {
   const { archive, manifest } = await fixture(t);
   await writeFile(manifest, 'keep this existing file unchanged\n');
