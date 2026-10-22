@@ -3,7 +3,7 @@
 // Default is read-only: print a summary. Use --write PATH to save the JSON manifest.
 // Symlinks are rejected rather than silently followed, and no source files are modified.
 import { createHash } from 'node:crypto';
-import { readdir, readFile, lstat, stat, realpath, writeFile, open } from 'node:fs/promises';
+import { readdir, readFile, lstat, realpath, writeFile, open } from 'node:fs/promises';
 import path from 'node:path';
 
 const args = process.argv.slice(2);
@@ -80,9 +80,13 @@ async function walk(directory) {
         sizeBytes += chunk.length;
       }
       const after = await handle.stat({ bigint: true });
-      const pathAfter = await stat(fullPath, { bigint: true });
+      // lstat is intentional: stat would follow a symlink substituted after
+      // the directory walk and could make an external target look like the
+      // original in-archive file.
+      const pathAfter = await lstat(fullPath, { bigint: true });
       if (before.dev !== after.dev || before.ino !== after.ino || before.size !== after.size ||
           before.mtimeNs !== after.mtimeNs || before.ctimeNs !== after.ctimeNs ||
+          pathAfter.isSymbolicLink() || !pathAfter.isFile() ||
           after.dev !== pathAfter.dev || after.ino !== pathAfter.ino ||
           BigInt(sizeBytes) !== after.size) {
         throw new Error(`File changed while being inventoried; retry with the archive idle: ${fullPath}`);
