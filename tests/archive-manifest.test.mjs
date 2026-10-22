@@ -136,6 +136,26 @@ test('rejects unsafe paths and duplicate entries in a manifest', async t => {
   const duplicate = run([archive, '--verify', manifest]);
   assert.notEqual(duplicate.status, 0);
   assert.match(duplicate.stderr, /Unsupported or malformed archive manifest/);
+
+  for (const unsafePath of ['folder\\..\\outside.txt', 'folder//file.txt', './master.txt', 'folder/./file.txt', 'folder/../outside.txt']) {
+    saved.files[0].path = unsafePath;
+    saved.files[1].path = 'master.txt';
+    saved.total_size_bytes = saved.files.reduce((sum, item) => sum + item.size_bytes, 0);
+    await writeFile(manifest, JSON.stringify(saved));
+    const result = run([archive, '--verify', manifest]);
+    assert.notEqual(result.status, 0, `should reject ${JSON.stringify(unsafePath)}`);
+    assert.match(result.stderr, /Unsupported or malformed archive manifest/);
+  }
+
+  saved.files[0].path = 'artwork/cover.txt';
+  saved.files[1].path = 'master.txt';
+  saved.files[0].size_bytes = Number.MAX_SAFE_INTEGER;
+  saved.files[1].size_bytes = 1;
+  saved.total_size_bytes = Number.MAX_SAFE_INTEGER + 1;
+  await writeFile(manifest, JSON.stringify(saved));
+  const overflow = run([archive, '--verify', manifest]);
+  assert.notEqual(overflow.status, 0);
+  assert.match(overflow.stderr, /Unsupported or malformed archive manifest/);
 });
 
 test('refuses to claim a complete inventory when the archive contains a symlink', async t => {

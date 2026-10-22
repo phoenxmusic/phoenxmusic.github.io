@@ -6,7 +6,6 @@ import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
 import { readdir, readFile, lstat, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const rootArg = args[0];
@@ -110,14 +109,17 @@ if (verifyPath) {
   const expected = JSON.parse(await readFile(verifyPath, 'utf8'));
   const validFileEntries = Array.isArray(expected.files) && expected.files.every(item =>
     item && typeof item.path === 'string' && item.path.length > 0 &&
-    !path.posix.isAbsolute(item.path) && !item.path.split('/').includes('..') &&
+    !path.posix.isAbsolute(item.path) && !item.path.includes('\\') &&
+    item.path.split('/').every(part => part !== '' && part !== '.' && part !== '..') &&
+    path.posix.normalize(item.path) === item.path && !/[\u0000-\u001f]/.test(item.path) &&
     Number.isSafeInteger(item.size_bytes) && item.size_bytes >= 0 &&
     typeof item.sha256 === 'string' && /^[a-f0-9]{64}$/.test(item.sha256));
   const paths = validFileEntries ? expected.files.map(item => item.path) : [];
+  const computedTotal = validFileEntries ? expected.files.reduce((sum, item) => sum + item.size_bytes, 0) : NaN;
   if (expected.format !== 'phoenx-archive-manifest-v1' || expected.hash_algorithm !== 'SHA-256' ||
       !validFileEntries || new Set(paths).size !== paths.length ||
       expected.file_count !== expected.files.length ||
-      expected.total_size_bytes !== expected.files.reduce((sum, item) => sum + item.size_bytes, 0)) {
+      !Number.isSafeInteger(computedTotal) || expected.total_size_bytes !== computedTotal) {
     throw new Error(`Unsupported or malformed archive manifest: ${verifyPath}`);
   }
   const byPath = new Map(files.map(item => [item.path, item]));
