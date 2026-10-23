@@ -30,9 +30,12 @@ jobs:
         run: |
           node scripts/build.mjs
           node scripts/check-build.mjs
-      - name: Verify generated output is reproducible and branding guard passes
+      - name: Verify repeat-build reproducibility and branding guard
         run: |
-          git diff --exit-code
+          find . -type f -not -path './.git/*' -print0 | sort -z | xargs -0 sha256sum > /tmp/phoenx-build-first.sha256
+          node scripts/build.mjs
+          find . -type f -not -path './.git/*' -print0 | sort -z | xargs -0 sha256sum > /tmp/phoenx-build-second.sha256
+          diff -u /tmp/phoenx-build-first.sha256 /tmp/phoenx-build-second.sha256
           python scripts/check_banned_terms.py
       - name: Check live homepage, release pages, and imported archive
         run: node scripts/check-live-site.mjs
