@@ -14,6 +14,25 @@ function xmlEscape(value) {
     .replaceAll("'", '&apos;');
 }
 
+function htmlEscape(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function htmlUnescape(value) {
+  return String(value)
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'")
+    .replaceAll('&apos;', "'")
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>');
+}
+
 async function findHtmlFiles(directory, root, results = []) {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
@@ -37,7 +56,22 @@ export async function generateSeoAssets(root, baseUrl = 'https://phoenxmusic.git
   const ignored = [];
 
   for (const file of htmlFiles) {
-    const html = await readFile(file.absolute, 'utf8');
+    let html = await readFile(file.absolute, 'utf8');
+    // Give pages a useful text-based social card even when the source archive
+    // has no verified share image. Never invent artwork or alter canonical URLs.
+    if (!/<meta\s+name=["']twitter:card["']/i.test(html)) {
+      const title = htmlUnescape(html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']*)["'][^>]*>/i)?.[1]
+        ?? html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i)?.[1]?.replace(/\s+/g, ' ').trim()
+        ?? '');
+      const description = htmlUnescape(html.match(/<meta\s+property=["']og:description["']\s+content=["']([^"']*)["'][^>]*>/i)?.[1]
+        ?? html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*)["'][^>]*>/i)?.[1]
+        ?? '');
+      const socialTags = `\n<meta name="twitter:card" content="summary">\n<meta name="twitter:title" content="${htmlEscape(title)}">\n<meta name="twitter:description" content="${htmlEscape(description)}">`;
+      if (/<\/head\s*>/i.test(html)) {
+        html = html.replace(/<\/head\s*>/i, `${socialTags}\n</head>`);
+        await writeFile(file.absolute, html, 'utf8');
+      }
+    }
     const match = html.match(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)["']\s*\/?\s*>/i);
     if (!match) {
       ignored.push(file.relative);

@@ -31,6 +31,8 @@ jobs:
         run: node --test
       - name: Audit generated site and internal links
         run: node scripts/check-build.mjs
+      - name: Audit titles, descriptions, canonical URLs, and social metadata
+        run: node scripts/audit-seo-metadata.mjs
       - name: Validate generated XML
         run: python -c "import xml.etree.ElementTree as ET; [ET.parse(p) for p in ('sitemap.xml', 'rss.xml')]; print('sitemap.xml and rss.xml are valid XML')"
       - name: Report validation scope

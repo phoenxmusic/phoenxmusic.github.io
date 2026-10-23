@@ -13,7 +13,7 @@ test('SEO assets include only canonical public routes and exclude preview/source
     await mkdir(path.join(root, 'presentation-preview'), { recursive: true });
     await mkdir(path.join(root, 'content'), { recursive: true });
     await writeFile(path.join(root, 'index.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/">');
-    await writeFile(path.join(root, 'releases', 'sample', 'index.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/releases/sample/">');
+    await writeFile(path.join(root, 'releases', 'sample', 'index.html'), '<html><head><title>Sample release</title><meta name="description" content="A sample release"><meta property="og:title" content="Sample release"><meta property="og:description" content="A sample release"><link rel="canonical" href="https://phoenxmusic.github.io/releases/sample/"></head><body>Example</body></html>');
     await writeFile(path.join(root, 'releases', 'greek', 'index.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/στιχοι/">');
     await writeFile(path.join(root, 'presentation-preview', 'index.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/presentation-preview/">');
     await writeFile(path.join(root, 'content', 'draft.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/draft/">');
@@ -21,6 +21,7 @@ test('SEO assets include only canonical public routes and exclude preview/source
     const summary = await generateSeoAssets(root);
     const sitemap = await readFile(path.join(root, 'sitemap.xml'), 'utf8');
     const robots = await readFile(path.join(root, 'robots.txt'), 'utf8');
+    const generatedPage = await readFile(path.join(root, 'releases', 'sample', 'index.html'), 'utf8');
     assert.equal(summary.urls, 3);
     assert.match(sitemap, /https:\/\/phoenxmusic\.github\.io\//);
     assert.match(sitemap, /https:\/\/phoenxmusic\.github\.io\/releases\/sample\//);
@@ -28,6 +29,9 @@ test('SEO assets include only canonical public routes and exclude preview/source
     assert.doesNotMatch(sitemap, /presentation-preview|\/draft\//);
     assert.match(robots, /User-agent: \*/);
     assert.match(robots, /Sitemap: https:\/\/phoenxmusic\.github\.io\/sitemap\.xml/);
+    assert.match(generatedPage, /name="twitter:card" content="summary"/);
+    assert.match(generatedPage, /name="twitter:title" content="Sample release"/);
+    assert.match(generatedPage, /name="twitter:description" content="A sample release"/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
