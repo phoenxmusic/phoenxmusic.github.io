@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">PhoenX Music Archive</title>
+  <desc id="desc">A dark charcoal and ember-orange typographic card for the PhoenX music archive.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#08090d"/>
+      <stop offset="0.58" stop-color="#171016"/>
+      <stop offset="1" stop-color="#08090d"/>
+    </linearGradient>
+    <radialGradient id="ember">
+      <stop offset="0" stop-color="#ff7a24" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#ff4b14" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ffb05a"/>
+      <stop offset="0.48" stop-color="#ff6a1b"/>
+      <stop offset="1" stop-color="#d93612"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1000" cy="315" r="360" fill="url(#ember)"/>
+  <g fill="none" stroke="#ff7426" stroke-opacity="0.24">
+    <circle cx="1000" cy="315" r="245" stroke-width="1.5"/>
+    <circle cx="1000" cy="315" r="285" stroke-width="1"/>
+    <circle cx="1000" cy="315" r="325" stroke-width="1"/>
+  </g>
+  <g stroke="url(#accent)" stroke-linecap="round" fill="none">
+    <path d="M790 315h24l12-36 18 72 18-118 20 166 19-105 17 42h21" stroke-width="5" opacity="0.92"/>
+    <path d="M824 395h36m16 0h10m18 0h36m18 0h8m18 0h30" stroke-width="3" opacity="0.58"/>
+  </g>
+  <path d="M82 112h66" stroke="url(#accent)" stroke-width="5"/>
+  <text x="82" y="250" fill="#f7f3ef" font-family="Arial, Helvetica, sans-serif" font-size="112" font-weight="700" letter-spacing="5">PHOENX</text>
+  <text x="88" y="310" fill="#ff8a39" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" letter-spacing="8">MUSIC ARCHIVE</text>
+  <path d="M88 355h435" stroke="#f3ece5" stroke-opacity="0.22" stroke-width="1"/>
+  <text x="88" y="405" fill="#e7e0da" font-family="Arial, Helvetica, sans-serif" font-size="24" letter-spacing="2">RELEASES  ·  STORIES  ·  VIDEOS</text>
+  <text x="88" y="548" fill="#bcb1aa" font-family="Arial, Helvetica, sans-serif" font-size="20" letter-spacing="1.2">PHOENXMUSIC.GITHUB.IO</text>
+  <text x="1118" y="566" fill="#ff8a39" font-family="Arial, Helvetica, sans-serif" font-size="16" letter-spacing="4" text-anchor="end">INDEPENDENT MUSIC</text>
+</svg>

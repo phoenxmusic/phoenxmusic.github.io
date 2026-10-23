@@ -9,11 +9,13 @@ test('SEO assets include only canonical public routes and exclude preview/source
   const root = await mkdtemp(path.join(os.tmpdir(), 'phoenx-seo-'));
   try {
     await mkdir(path.join(root, 'releases', 'sample'), { recursive: true });
+    await mkdir(path.join(root, 'releases', 'custom'), { recursive: true });
     await mkdir(path.join(root, 'releases', 'greek'), { recursive: true });
     await mkdir(path.join(root, 'presentation-preview'), { recursive: true });
     await mkdir(path.join(root, 'content'), { recursive: true });
     await writeFile(path.join(root, 'index.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/">');
     await writeFile(path.join(root, 'releases', 'sample', 'index.html'), '<html><head><title>Sample release</title><meta name="description" content="A sample release"><meta property="og:title" content="Sample release"><meta property="og:description" content="A sample release"><link rel="canonical" href="https://phoenxmusic.github.io/releases/sample/"></head><body>Example</body></html>');
+    await writeFile(path.join(root, 'releases', 'custom', 'index.html'), '<html><head><title>Custom art</title><meta property="og:image" content="https://cdn.example.test/approved-art.jpg"><link rel="canonical" href="https://phoenxmusic.github.io/releases/custom/"></head><body>Example</body></html>');
     await writeFile(path.join(root, 'releases', 'greek', 'index.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/στιχοι/">');
     await writeFile(path.join(root, 'presentation-preview', 'index.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/presentation-preview/">');
     await writeFile(path.join(root, 'content', 'draft.html'), '<link rel="canonical" href="https://phoenxmusic.github.io/draft/">');
@@ -22,7 +24,8 @@ test('SEO assets include only canonical public routes and exclude preview/source
     const sitemap = await readFile(path.join(root, 'sitemap.xml'), 'utf8');
     const robots = await readFile(path.join(root, 'robots.txt'), 'utf8');
     const generatedPage = await readFile(path.join(root, 'releases', 'sample', 'index.html'), 'utf8');
-    assert.equal(summary.urls, 3);
+    const customArtPage = await readFile(path.join(root, 'releases', 'custom', 'index.html'), 'utf8');
+    assert.equal(summary.urls, 4);
     assert.match(sitemap, /https:\/\/phoenxmusic\.github\.io\//);
     assert.match(sitemap, /https:\/\/phoenxmusic\.github\.io\/releases\/sample\//);
     assert.match(sitemap, /%CF%83%CF%84%CE%B9%CF%87%CE%BF%CE%B9/);
@@ -32,9 +35,20 @@ test('SEO assets include only canonical public routes and exclude preview/source
     assert.match(generatedPage, /name="twitter:card" content="summary"/);
     assert.match(generatedPage, /name="twitter:title" content="Sample release"/);
     assert.match(generatedPage, /name="twitter:description" content="A sample release"/);
+    assert.match(generatedPage, /property="og:image" content="https:\/\/phoenxmusic\.github\.io\/assets\/phoenx-social-card\.png"/);
+    assert.match(generatedPage, /property="og:image:alt" content="PhoenX Music Archive — releases, stories, and videos"/);
+    assert.match(customArtPage, /property="og:image" content="https:\/\/cdn\.example\.test\/approved-art\.jpg"/);
+    assert.doesNotMatch(customArtPage, /phoenx-social-card\.png/);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+});
+
+test('PhoenX social card is a valid-size PNG asset', async () => {
+  const png = await readFile(new URL('../assets/phoenx-social-card.png', import.meta.url));
+  assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  assert.equal(png.readUInt32BE(16), 1200);
+  assert.equal(png.readUInt32BE(20), 630);
 });
 
 test('SEO asset generation fails if the canonical homepage is absent', async () => {

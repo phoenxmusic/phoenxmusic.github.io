@@ -57,8 +57,15 @@ export async function generateSeoAssets(root, baseUrl = 'https://phoenxmusic.git
 
   for (const file of htmlFiles) {
     let html = await readFile(file.absolute, 'utf8');
-    // Give pages a useful text-based social card even when the source archive
-    // has no verified share image. Never invent artwork or alter canonical URLs.
+    // Preserve page-specific images; otherwise use the original site-wide card.
+    // The card is typographic and original, so it does not imply cleared release art.
+    if (!/<meta\s+property=["']og:image["']/i.test(html) && /<\/head\s*>/i.test(html)) {
+      const imageTags = `\n<meta property="og:image" content="${normalizedBase}/assets/phoenx-social-card.png">\n<meta property="og:image:alt" content="PhoenX Music Archive — releases, stories, and videos">`;
+      html = html.replace(/<\/head\s*>/i, `${imageTags}\n</head>`);
+      await writeFile(file.absolute, html, 'utf8');
+    }
+    // Give pages a useful text-based social card even when source archive
+    // records have no verified per-release artwork. Never alter canonical URLs.
     if (!/<meta\s+name=["']twitter:card["']/i.test(html)) {
       const title = htmlUnescape(html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']*)["'][^>]*>/i)?.[1]
         ?? html.match(/<title\b[^>]*>([\s\S]*?)<\/title\s*>/i)?.[1]?.replace(/\s+/g, ' ').trim()
