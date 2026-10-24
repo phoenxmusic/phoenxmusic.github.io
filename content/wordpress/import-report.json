@@ -1,21 +1,20 @@
 {
-  "source_filename": "meniossymeon.WordPress.2026-10-22.xml",
-  "source_bytes": 1465463,
-  "source_record_count": 341,
+  "source_filename": "phoenxmusic.WordPress.2026-10-22.xml",
+  "source_bytes": 1820559,
+  "source_record_count": 312,
   "published_imported": {
-    "portfolio": 1,
     "page": 19,
     "post": 109
   },
-  "published_total": 129,
-  "media_reference_count": 150,
+  "published_total": 128,
+  "media_reference_count": 102,
   "navigation_item_count": 39,
   "excluded_nonpublic_records": {
-    "page:private": 3,
+    "page:private": 4,
     "page:draft": 2,
-    "post:draft": 6,
-    "post:private": 11
+    "post:draft": 7,
+    "post:private": 12
   },
-  "media_binary_migration": "not possible from WXR alone: export contains URLs/metadata, not binary files; WordPress source returned HTTP 403 during retrieval test",
-  "imported_at_utc": "2026-10-22T04:07:47Z"
+  "media_binary_migration": "WXR contains metadata and URLs, not file bytes; the separate downloader verified 102/102 image binaries locally. See media-download-report.json.",
+  "imported_at_utc": "2026-10-22T15:14:05Z"
 }

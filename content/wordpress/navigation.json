@@ -3,6 +3,17 @@
     "title": "",
     "url": "",
     "object": "page",
+    "object_id": "2",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Main"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
     "object_id": "17",
     "parent_id": "0",
     "type": "post_type",
@@ -14,7 +25,7 @@
     "title": "",
     "url": "",
     "object": "page",
-    "object_id": "2",
+    "object_id": "910",
     "parent_id": "0",
     "type": "post_type",
     "menu_terms": [
@@ -48,7 +59,7 @@
     "url": "",
     "object": "page",
     "object_id": "64",
-    "parent_id": "76",
+    "parent_id": "911",
     "type": "post_type",
     "menu_terms": [
       "Navigation"
@@ -59,7 +70,7 @@
     "url": "",
     "object": "page",
     "object_id": "62",
-    "parent_id": "76",
+    "parent_id": "911",
     "type": "post_type",
     "menu_terms": [
       "Navigation"
@@ -70,7 +81,7 @@
     "url": "",
     "object": "page",
     "object_id": "60",
-    "parent_id": "76",
+    "parent_id": "911",
     "type": "post_type",
     "menu_terms": [
       "Navigation"
@@ -92,83 +103,17 @@
     "url": "",
     "object": "page",
     "object_id": "692",
-    "parent_id": "76",
+    "parent_id": "911",
     "type": "post_type",
     "menu_terms": [
       "Navigation"
     ]
   },
   {
-    "title": "Twitter",
-    "url": "https://twitter.com/Menios_Symeon",
-    "object": "custom",
-    "object_id": "295",
-    "parent_id": "0",
-    "type": "custom",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
-    "title": "YouTube",
-    "url": "http://youtube.com/user/https://www.youtube.com/channel/UCcyY8S-EX-k1uLTbOGQq-Ow",
-    "object": "custom",
-    "object_id": "296",
-    "parent_id": "0",
-    "type": "custom",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
-    "title": "Facebook",
-    "url": "https://www.facebook.com/pages/Menios-Symeon-Music-Page/260975890413?ref=hl",
-    "object": "custom",
-    "object_id": "297",
-    "parent_id": "0",
-    "type": "custom",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
-    "title": "LastFM",
-    "url": "http://www.last.fm/music/Menios+Symeon?ac=menios%20s",
-    "object": "custom",
-    "object_id": "298",
-    "parent_id": "0",
-    "type": "custom",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
-    "title": "Spotify",
-    "url": "http://https//play.spotify.com/artist/7ks4xfm9nPhBkQqYxI61mW",
-    "object": "custom",
-    "object_id": "299",
-    "parent_id": "0",
-    "type": "custom",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
-    "title": "iTunes",
-    "url": "https://itunes.apple.com/us/artist/menios-symeon/id60822920",
-    "object": "custom",
-    "object_id": "300",
-    "parent_id": "0",
-    "type": "custom",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
     "title": "News",
     "url": "https://wordpress.com/posts/meniossymeon.com",
     "object": "custom",
-    "object_id": "880",
+    "object_id": "926",
     "parent_id": "0",
     "type": "custom",
     "menu_terms": [
@@ -180,7 +125,7 @@
     "url": "",
     "object": "page",
     "object_id": "990",
-    "parent_id": "76",
+    "parent_id": "911",
     "type": "post_type",
     "menu_terms": [
       "Navigation"
@@ -191,7 +136,7 @@
     "url": "",
     "object": "page",
     "object_id": "993",
-    "parent_id": "76",
+    "parent_id": "911",
     "type": "post_type",
     "menu_terms": [
       "Navigation"
@@ -205,18 +150,40 @@
     "parent_id": "0",
     "type": "post_type",
     "menu_terms": [
-      "Connect"
+      "Main"
     ]
   },
   {
     "title": "",
     "url": "",
     "object": "page",
-    "object_id": "1129",
+    "object_id": "212",
     "parent_id": "0",
     "type": "post_type",
     "menu_terms": [
-      "Connect"
+      "Main"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
+    "object_id": "1133",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Main"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
+    "object_id": "910",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Main"
     ]
   },
   {
@@ -245,11 +212,66 @@
     "title": "",
     "url": "",
     "object": "page",
-    "object_id": "2",
+    "object_id": "910",
     "parent_id": "0",
     "type": "post_type",
     "menu_terms": [
       "Connect"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
+    "object_id": "212",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Connect"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
+    "object_id": "624",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Connect"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
+    "object_id": "52",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Main"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
+    "object_id": "31",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Main"
+    ]
+  },
+  {
+    "title": "",
+    "url": "",
+    "object": "page",
+    "object_id": "17",
+    "parent_id": "0",
+    "type": "post_type",
+    "menu_terms": [
+      "Main"
     ]
   },
   {
@@ -301,7 +323,7 @@
     "url": "",
     "object": "page",
     "object_id": "64",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -312,7 +334,7 @@
     "url": "",
     "object": "page",
     "object_id": "62",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -323,7 +345,7 @@
     "url": "",
     "object": "page",
     "object_id": "60",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -334,7 +356,7 @@
     "url": "",
     "object": "page",
     "object_id": "990",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -345,7 +367,7 @@
     "url": "",
     "object": "page",
     "object_id": "1030",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -356,7 +378,7 @@
     "url": "",
     "object": "page",
     "object_id": "993",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -367,7 +389,7 @@
     "url": "",
     "object": "page",
     "object_id": "692",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -378,7 +400,7 @@
     "url": "",
     "object": "page",
     "object_id": "252",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -389,7 +411,7 @@
     "url": "",
     "object": "page",
     "object_id": "690",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"
@@ -400,29 +422,7 @@
     "url": "",
     "object": "page",
     "object_id": "154",
-    "parent_id": "0",
-    "type": "post_type",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
-    "title": "",
-    "url": "",
-    "object": "page",
-    "object_id": "212",
-    "parent_id": "0",
-    "type": "post_type",
-    "menu_terms": [
-      "Connect"
-    ]
-  },
-  {
-    "title": "",
-    "url": "",
-    "object": "page",
-    "object_id": "624",
-    "parent_id": "0",
+    "parent_id": "1429",
     "type": "post_type",
     "menu_terms": [
       "Connect"

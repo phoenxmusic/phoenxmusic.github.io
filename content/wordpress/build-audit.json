@@ -1,13 +1,16 @@
 {
-  "source": "meniossymeon.WordPress.2026-10-22.xml",
+  "source": "phoenxmusic.WordPress.2026-10-22.xml",
   "imported_pages": 19,
   "imported_posts": 109,
   "imported_portfolio_items": 1,
-  "media_references": 150,
+  "media_references": 102,
   "navigation_items": 39,
   "generated_content_pages": 129,
   "route_collisions": false,
   "private_or_draft_records_in_public_json": false,
-  "media_binaries_copied": false,
-  "media_limit": "WXR contains references, not binary files; WordPress source returns HTTP 403 without authenticated access."
+  "media_binaries_verified_locally": true,
+  "media_binary_status_counts": {
+    "verified_existing_local_file": 102
+  },
+  "media_limit": "WXR supplied URLs and metadata; public image binaries were subsequently downloaded and signature-verified by scripts/download_wordpress_media.py."
 }

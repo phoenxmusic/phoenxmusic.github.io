@@ -1,4 +1,5 @@
 import { readdir, readFile, mkdir, rm, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateSeoAssets } from './seo-assets.mjs';
@@ -109,8 +110,26 @@ function wordpressNav() {
   return `${artistNav()}<nav class="archive-nav" aria-label="Archive navigation"><a href="/archive-pages/">All legacy pages</a><a href="/journal/">All posts</a><a href="/media-archive/">Media references</a><a href="/archive-info/">Archive notes</a></nav>`;
 }
 
-function rewriteImportedLinks(source, pathToRoute, slugToRoute) {
-  const withMediaPlaceholders = sanitizeImportedHtml(source).replace(/<img\b([^>]*?)src=(['"])(https?:\/\/(?:www\.)?meniossymeon\.wordpress\.com\/wp-content\/uploads\/[^'"]+)\2([^>]*)\/?>/gi, (full, before, quote, url, after) => {
+function rewriteImportedLinks(source, pathToRoute, slugToRoute, mediaRecords = []) {
+  // Keep the original source URL in media.json for provenance, but serve the
+  // verified downloaded binary from this static site when rendering content.
+  let localMediaSource = sanitizeImportedHtml(source);
+  for (const media of mediaRecords) {
+    if (!media.url || !media.local_path || !/^(downloaded_and_signature_verified|verified_existing_local_file)$/.test(media.status || '')) continue;
+    localMediaSource = localMediaSource.split(media.url).join('/' + media.local_path.replace(/^\/+/, ''));
+  }
+  const withRecoveredGalleries = localMediaSource.replace(/<section\b([^>]*\bclass=(['"])[^'"]*\bwp-gallery\b[^'"]*\2[^>]*)>([\s\S]*?)<\/section\s*>/gi, (full, attributes, quote, content) => {
+    const galleryContent = content
+      .replace(/Gallery image files were referenced by the export but could not be retrieved from the private source site\./gi, 'Original WordPress gallery. Locally recovered images are shown below when their file signatures have been verified.')
+      .replace(/<li><strong>([\s\S]*?)<\/strong>\s*[—-]\s*image binary not included in export;\s*<a href=(['"])(\/assets\/wordpress-media\/[^'"]+)\2>original media URL<\/a><\/li>/gi, (item, label, linkQuote, localUrl) => {
+        const cleanUrl = localUrl.replace(/\?.*$/, '');
+        const media = mediaRecords.find(record => record.local_path && '/' + record.local_path.replace(/^\/+/, '') === cleanUrl && /^(downloaded_and_signature_verified|verified_existing_local_file)$/.test(record.status || ''));
+        if (!media) return item;
+        return '<li><figure><a href="' + escapeHtml(cleanUrl) + '"><img src="' + escapeHtml(cleanUrl) + '" alt="' + label + '" loading="lazy" decoding="async" style="display:block;width:min(100%,20rem);max-height:18rem;object-fit:contain"></a><figcaption>' + label + '</figcaption></figure></li>';
+      });
+    return '<section' + attributes + '>' + galleryContent + '</section>';
+  });
+  const withMediaPlaceholders = withRecoveredGalleries.replace(/<img\b([^>]*?)src=(['"])(https?:\/\/(?:www\.)?meniossymeon\.wordpress\.com\/wp-content\/uploads\/[^'"]+)\2([^>]*)\/?>/gi, (full, before, quote, url, after) => {
     const alt = (before + ' ' + after).match(/\balt=(['"])(.*?)\1/i);
     const label = alt ? alt[2] : 'WordPress image';
     return '<span class="media-unavailable" title="' + escapeHtml(url) + '" style="display:block;padding:1rem;border-left:3px solid var(--ember);background:var(--panel)">' + escapeHtml(label) + ' — original file not included in the export. See the media reference inventory for the source URL.</span>';
@@ -223,16 +242,19 @@ if (await readFile(wordpressReportPath, 'utf8').then(() => true).catch(() => fal
   const mediaItemsHtml = wpMedia.map(media => {
     const label = media.title || media.attached_file || 'Untitled attachment';
     const meta = (media.mime_type || 'MIME type not recorded') + ' · ' + (media.date || 'Date unknown') + (media.alt ? ' · Alt: ' + media.alt : '');
-    return '<li><div><p class=\"title\">' + escapeHtml(label) + '</p><p class=\"meta\">' + escapeHtml(meta) + '</p><p class=\"small\"><a href=\"' + escapeHtml(media.url) + '\">Original media URL</a></p><p class=\"small\">' + escapeHtml(media.status) + '</p></div></li>';
+    const localAsset = media.local_path && /^(downloaded_and_signature_verified|verified_existing_local_file)$/.test(media.status || '') ? '/' + media.local_path.replace(/^\/+/, '') : '';
+    const preview = localAsset && /^image\//i.test(media.content_type || media.mime_type || '') ? '<a href=\"' + escapeHtml(localAsset) + '\"><img src=\"' + escapeHtml(localAsset) + '\" alt=\"' + escapeHtml(media.alt || label) + '\" loading=\"lazy\" decoding=\"async\" style=\"display:block;max-width:min(100%,18rem);max-height:14rem;object-fit:contain;margin:.5rem 0\"></a>' : '';
+    return '<li><div><p class=\"title\">' + escapeHtml(label) + '</p>' + preview + '<p class=\"meta\">' + escapeHtml(meta) + '</p><p class=\"small\"><a href=\"' + escapeHtml(media.url) + '\">Original media URL</a></p><p class=\"small\">' + escapeHtml(media.status) + '</p></div></li>';
   }).join('\n');
-  const mediaBody = '<header><div class=\"wrap\"><p><a href=\"/\">← ' + escapeHtml(site.title) + '</a></p><h1 style=\"font-size:clamp(2.5rem,9vw,4.5rem)\">Media references</h1><p class=\"sub\">' + wpMedia.length + ' attachment records from the WordPress export.</p>' + wordpressNav() + '</div></header><main><section><div class=\"wrap\"><p class=\"notice\">The XML export includes media metadata and URLs, not the original file bytes. Retrieval tests returned HTTP 403 because the source WordPress site is private. These are preserved references, not copied media files.</p><ol class=\"timeline\">' + mediaItemsHtml + '</ol></div></section></main><footer><div class=\"wrap\"><a href=\"/\">Back to catalogue</a></div></footer>';
+  const verifiedMediaCount = wpMedia.filter(media => media.local_path && existsSync(path.join(root, media.local_path)) && /^(downloaded_and_signature_verified|verified_existing_local_file)$/.test(media.status || '')).length;
+  const mediaBody = '<header><div class=\"wrap\"><p><a href=\"/\">← ' + escapeHtml(site.title) + '</a></p><h1 style=\"font-size:clamp(2.5rem,9vw,4.5rem)\">Media archive</h1><p class=\"sub\">' + verifiedMediaCount + ' of ' + wpMedia.length + ' attachment binaries verified and stored locally.</p>' + wordpressNav() + '</div></header><main><section><div class=\"wrap\"><p class=\"notice\">Original WordPress source URLs and attachment metadata are retained for provenance. Verified image files are served from this archive where available.</p><ol class=\"timeline\">' + mediaItemsHtml + '</ol></div></section></main><footer><div class=\"wrap\"><a href=\"/\">Back to catalogue</a></div></footer>';
   await mkdir(generatedMediaArchiveDir, { recursive: true });
-  await writeFile(path.join(generatedMediaArchiveDir, 'index.html'), documentHtml({ title: 'Media references — ' + site.title, description: 'WordPress media attachment URLs and metadata; binary assets remain to be retrieved.', canonical: 'https://phoenxmusic.github.io/media-archive/', body: mediaBody }), 'utf8');
+  await writeFile(path.join(generatedMediaArchiveDir, 'index.html'), documentHtml({ title: 'Media archive — ' + site.title, description: 'WordPress media attachment URLs, metadata, and locally verified image binaries.', canonical: 'https://phoenxmusic.github.io/media-archive/', body: mediaBody }), 'utf8');
 
   for (const record of allRecords) {
     const outputDir = routeDirectory(record.route);
     await mkdir(outputDir, { recursive: true });
-    const bodyHtml = rewriteImportedLinks(record.content_html || '', pathToRoute, slugToRoute);
+    const bodyHtml = rewriteImportedLinks(record.content_html || '', pathToRoute, slugToRoute, wpMedia);
     const terms = [...(record.categories || []), ...(record.tags || [])].map(term => term.name).filter(Boolean);
     const metadata = '<p class=\"meta\">' + escapeHtml((record.date || '').slice(0, 10) || 'Publication date unknown') + (record.author ? ' · ' + escapeHtml(record.author) : '') + (terms.length ? ' · ' + escapeHtml([...new Set(terms)].join(', ')) : '') + '</p>';
     const sourceLink = '<p class=\"small\">Source: <a href=\"' + escapeHtml(record.source_url) + '\">original WordPress URL</a> · Imported from the 22 October 2026 XML export.</p>';
@@ -247,7 +269,7 @@ if (await readFile(wordpressReportPath, 'utf8').then(() => true).catch(() => fal
   // Add visible migration navigation to the homepage and route the old archive link to its new location.
   let homepage = await readFile(path.join(root, 'index.html'), 'utf8');
   homepage = homepage.replace('href=\"/about/\">About this archive', 'href=\"/archive-info/\">About this archive');
-  homepage = homepage.replace('</main>', '<section id=\"wordpress-archive\"><div class=\"wrap\"><h2>Original WordPress archive</h2><p>Published pages and posts from the supplied export are reproduced here with original dates, source links, and taxonomy metadata.</p><p><a class=\"button-link\" href=\"/about/\">About PhoenX</a> <a class=\"button-link\" href=\"/music/\">Music</a> <a class=\"button-link\" href=\"/connect/\">Connect</a> <a class=\"button-link\" href=\"/gallery/\">Gallery</a> <a class=\"button-link\" href=\"/στιχοι/\">Lyrics</a> <a class=\"button-link\" href=\"/store/\">Store</a> <a class=\"button-link\" href=\"/tour/\">Tour</a> <a class=\"button-link\" href=\"/news/\">News</a> <a class=\"button-link\" href=\"/journal/\">All posts</a></p><p class=\"small\">The media inventory contains ' + wpMedia.length + ' attachment references. The XML does not contain media bytes and the source site returned HTTP 403 during retrieval tests. See <a href=\"/media-archive/\">media reference inventory</a> for the exact URLs.</p></div></section></main>');
+  homepage = homepage.replace('</main>', '<section id=\"wordpress-archive\"><div class=\"wrap\"><h2>Original WordPress archive</h2><p>Published pages and posts from the supplied export are reproduced here with original dates, source links, and taxonomy metadata.</p><p><a class=\"button-link\" href=\"/about/\">About PhoenX</a> <a class=\"button-link\" href=\"/music/\">Music</a> <a class=\"button-link\" href=\"/connect/\">Connect</a> <a class=\"button-link\" href=\"/gallery/\">Gallery</a> <a class=\"button-link\" href=\"/στιχοι/\">Lyrics</a> <a class=\"button-link\" href=\"/store/\">Store</a> <a class=\"button-link\" href=\"/tour/\">Tour</a> <a class=\"button-link\" href=\"/news/\">News</a> <a class=\"button-link\" href=\"/journal/\">All posts</a></p><p class=\"small\">The media archive contains ' + verifiedMediaCount + ' verified local binaries from ' + wpMedia.length + ' attachment records. See <a href=\"/media-archive/\">the media archive</a> for previews and original source URLs.</p></div></section></main>');
   homepage = homepage.replace('<a class=\"button-link\" href=\"/journal/\">All posts</a>', '<a class=\"button-link\" href=\"/journal/\">All posts</a> <a class=\"button-link\" href=\"/archive-pages/\">All pages</a> <a class=\"button-link\" href=\"/media-archive/\">Media references</a> <a class=\"button-link\" href=\"/archive-info/\">Archive notes</a>');
   await writeFile(path.join(root, 'index.html'), homepage, 'utf8');
   for (const file of [path.join(generatedVideosDir, 'index.html')]) {
@@ -255,7 +277,7 @@ if (await readFile(wordpressReportPath, 'utf8').then(() => true).catch(() => fal
     await writeFile(file, html.replaceAll('href=\"/about/\">About this archive', 'href=\"/archive-info/\">About this archive'), 'utf8');
   }
   const audit = {
-    source: 'meniossymeon.WordPress.2026-10-22.xml',
+    source: JSON.parse(await readFile(wordpressReportPath, 'utf8')).source_filename,
     imported_pages: wpPages.length,
     imported_posts: wpPosts.length,
     imported_portfolio_items: wpPortfolio.length,
@@ -264,8 +286,9 @@ if (await readFile(wordpressReportPath, 'utf8').then(() => true).catch(() => fal
     generated_content_pages: allRecords.length,
     route_collisions: false,
     private_or_draft_records_in_public_json: false,
-    media_binaries_copied: false,
-    media_limit: 'WXR contains references, not binary files; WordPress source returns HTTP 403 without authenticated access.'
+    media_binaries_verified_locally: wpMedia.length > 0 && wpMedia.every(record => record.local_path && existsSync(path.join(root, record.local_path)) && /^(downloaded_and_signature_verified|verified_existing_local_file)$/.test(record.status || '')),
+    media_binary_status_counts: Object.fromEntries([...wpMedia.reduce((counts, record) => counts.set(record.status || '[missing]', (counts.get(record.status || '[missing]') || 0) + 1), new Map())]),
+    media_limit: 'WXR supplied URLs and metadata; public image binaries were subsequently downloaded and signature-verified by scripts/download_wordpress_media.py.'
   };
   await writeFile(path.join(wordpressContentDir, 'build-audit.json'), JSON.stringify(audit, null, 2) + '\n', 'utf8');
   console.log('Imported WordPress archive: ' + wpPages.length + ' pages, ' + wpPosts.length + ' posts, ' + wpPortfolio.length + ' portfolio items, ' + wpMedia.length + ' media references, ' + wpNavigation.length + ' navigation records.');

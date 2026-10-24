@@ -30,14 +30,16 @@ test('rejects unsupported or conflicting media-audit command-line arguments', ()
 });
 
 test('supports summary, consistency-check, and create-only report modes', async t => {
+  const currentMedia = JSON.parse(await readFile(path.join(repoRoot, 'content', 'wordpress', 'media.json'), 'utf8'));
+  const expectedMediaCount = currentMedia.length;
   const summary = spawnSync(process.execPath, [script, '--summary'], {
     encoding: 'utf8',
     timeout: 10000,
   });
   assert.equal(summary.status, 0, summary.stderr);
   const summaryReport = JSON.parse(summary.stdout);
-  assert.equal(summaryReport.total_records, 150);
-  assert.equal(summaryReport.unique_nonempty_urls, 150);
+  assert.equal(summaryReport.total_records, expectedMediaCount);
+  assert.equal(summaryReport.unique_nonempty_urls, expectedMediaCount);
 
   const check = spawnSync(process.execPath, [script, '--check'], {
     encoding: 'utf8',
@@ -55,7 +57,7 @@ test('supports summary, consistency-check, and create-only report modes', async 
   });
   assert.equal(write.status, 0, write.stderr);
   const writtenReport = JSON.parse(await readFile(output, 'utf8'));
-  assert.equal(writtenReport.total_records, 150);
+  assert.equal(writtenReport.total_records, expectedMediaCount);
 
   const overwrite = spawnSync(process.execPath, [script, '--write', output], {
     encoding: 'utf8',

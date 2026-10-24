@@ -1,6 +1,6 @@
 # PhoenX music catalogue
 
-The public site is a static website hosted on GitHub Pages. It is generated from portable source records in this repository, with no package installation or paid API required. It includes a searchable/filterable release catalogue, permanent release pages, the published WordPress pages and posts, a searchable video archive for the public videos on both PhoenX YouTube channels, and a media-reference inventory.
+The public site is a static website hosted on GitHub Pages. It is generated from portable source records in this repository, with no package installation or paid API required. It includes a searchable/filterable release catalogue, permanent release pages, the published WordPress pages and posts, a searchable video archive for the public videos on both PhoenX YouTube channels, and a locally verified image archive.
 
 ## Artist presentation layer
 
@@ -14,7 +14,7 @@ The homepage includes a responsive hero, clear paths into the catalogue/video ar
 - a one-action filter reset;
 - keyboard focus states, a skip-to-content link, a responsive menu, and reduced-motion support.
 
-The decorative animated bars are not an audio-reactive visualizer. No persistent cross-page audio player is claimed: the imported WordPress export contains attachment references but not the media binaries, and video IDs must not be assigned to releases without verification. Do not publish or describe missing media as recovered.
+The decorative animated bars are not an audio-reactive visualizer. No persistent cross-page audio player is claimed: the WordPress export contains attachment references but no file bytes, and the current recovered assets are images only. Video IDs must not be assigned to releases without verification.
 
 After changing presentation code, run `node scripts/build.mjs`, `node scripts/check-build.mjs`, `node --test tests/*.test.mjs`, and `python scripts/check_banned_terms.py`. The checker compiles inline JavaScript from generated HTML, checks navigation coverage, validates all generated routes and source provenance, and counts the release/WordPress/archive records. Do not merge to `main` or change the public production site until the review version has been visually reviewed and approved.
 
@@ -54,15 +54,15 @@ To refresh the video index from YouTube's public channel listings, install the f
 
 ## WordPress content migration
 
-The import source was `meniossymeon.WordPress.2026-10-22.xml`. The public site build imports **19 published pages, 109 published posts, and one published portfolio item**. It also preserves 39 navigation records and 150 attachment references. Private and draft content is excluded. The original WordPress site has not been changed.
+The local import source was `content/phoenxmusic.WordPress.2026-10-22.xml` from `https://phoenxmusic.wordpress.com/`. The raw WXR export is deliberately excluded from Git because it contains private/draft source records; only the sanitized published-content JSON is intended for the public repository. The public site build imports **19 published pages, 109 published posts, and one published portfolio item**. It also preserves 39 navigation records and 102 attachment references. Private and draft content is excluded from the public JSON. The original WordPress site has not been changed.
 
-Portable content sources live in `content/wordpress/`: `pages.json`, `posts.json`, `portfolio.json`, `media.json`, and `navigation.json`, with import and build audit reports. Generated pages preserve source URLs, dates, titles, content HTML, categories, and tags. Internal links are rewritten to local routes where a matching imported record exists. Common WordPress gallery, caption, and audio shortcodes are converted to readable HTML fallbacks; unavailable images are shown as explicit placeholders rather than broken images.
+Portable content sources live in `content/wordpress/`: `pages.json`, `posts.json`, `portfolio.json`, `media.json`, and `navigation.json`, with import, media-download, and build audit reports. Generated pages preserve source URLs, dates, titles, content HTML, categories, and tags. Internal links are rewritten to local routes where a matching imported record exists. Recovered images are rendered from local files; gallery records without verified local binaries remain clearly marked.
 
-The metadata-only attachment audit is stored in `content/wordpress/media-audit.json` and can be reviewed with `node scripts/audit-media-inventory.mjs --summary`. Current findings: 150 unique HTTPS attachment URLs, no duplicate URLs, 3 missing titles, 147 missing alt-text values, and 150 missing MIME types. Extension-based counts suggest 78 JPG, 19 PNG, 2 GIF, 1 JPEG, 48 MP3, and 2 ZIP files. These are filename-derived categories, not verified file contents; all 150 binaries remain unavailable in the export. CI checks that the committed audit report still matches the source register.
+The attachment audit is stored in `content/wordpress/media-audit.json` and can be reviewed with `node scripts/audit-media-inventory.mjs --summary`. The current PhoenX Music export contains 102 unique HTTPS image URLs, no duplicate URLs, 3 missing titles, 99 missing alt-text values, and 102 missing MIME types. Filename-derived extensions are 80 JPG, 19 PNG, 1 JPEG, and 2 GIF; downloaded file signatures were checked. `content/wordpress/media-download-report.json` records **102 verified local image files totaling 74,016,060 bytes**. This confirms file retrieval and basic format signatures, not image quality, copyright ownership, or permission to use each image in promotion. CI checks that the metadata audit matches the source register.
 
-To repeat the import from a new WordPress WXR export, run `python scripts/import_wordpress_export.py PATH_TO_EXPORT.xml`, then `node scripts/build.mjs` and `node scripts/check-build.mjs`. Python is required only for re-importing; the GitHub Pages build uses Node.js built-ins and the checked-in JSON sources.
+To repeat the import from a new WordPress WXR export, run `python scripts/import_wordpress_export.py PATH_TO_EXPORT.xml`, then `python scripts/download_wordpress_media.py`, `node scripts/build.mjs`, and `node scripts/check-build.mjs`. Re-importing resets the attachment register to source metadata, so rerun the downloader to repopulate verified local paths before building. Python is required only for import and media retrieval; the GitHub Pages build uses Node.js built-ins and the checked-in JSON sources.
 
-**Media limitation:** the WXR export records attachment metadata and URLs but does not contain the actual image/audio/video files. Attempts to fetch the source site and sample media returned HTTP 403 because the WordPress site is private. `media-archive/` records all 150 references and explicitly does not claim those binaries were copied. Full binary migration remains blocked until authenticated media access or a separate media archive is available.
+**Media limitation:** the WXR export records attachment metadata and URLs but does not contain file bytes. The separate downloader successfully retrieved and signature-verified all 102 image files referenced by this export; the media archive displays them locally and preserves their original source URLs. This export does not provide the broader 150-item inventory or prove that audio/video binaries from another WordPress site have been recovered. Keep rights-uncleared assets out of marketing, and do not confuse image-file verification with a complete master-archive backup.
 
 ## Legacy preservation and maintenance
 

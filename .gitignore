@@ -1,0 +1,5 @@
+# Raw WordPress WXR export contains private/draft source records; keep it local.
+/content/phoenxmusic.WordPress.2026-10-22.xml
+
+# Standalone visual concept is a local review artifact, not part of the site build.
+/presentation-preview/

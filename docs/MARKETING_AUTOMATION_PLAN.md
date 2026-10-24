@@ -89,7 +89,7 @@ After publishing is explicitly enabled, the first live cadence should be conserv
 - `.github/workflows/seo-health.yml` and `.github/workflows/marketing-drafts.yml` provide read-only health checks and artifact-based draft review. The SEO and legacy-monitor workflows passed on commit `e192280`; the draft workflow passed on commit `06e4196`. Recurring schedules run from the default branch; do not merge this review branch without separate production approval.
 - The legacy monitor now compares two complete build snapshots, then runs the branding and live-site checks. Its run on `e192280` passed; no monitor guard was removed.
 - The site is a review version; do not treat it as the approved production destination until the owner reviews and authorizes deployment.
-- Original media binaries and rights evidence are incomplete. Do not make artwork/audio-dependent promotion eligible until the relevant asset is recovered and cleared.
+- The PhoenX Music export's 102 image binaries have been recovered locally and signature-verified, but rights evidence remains incomplete. Do not make artwork-dependent promotion eligible until the relevant asset's usage rights are cleared; this does not recover audio/video files or verify the separate Meniossymeon WordPress archive.
 - No social publishing integration, search-console data connection, or owner-approved publication cadence is evidenced in this repository.
 
 ## Definition of done

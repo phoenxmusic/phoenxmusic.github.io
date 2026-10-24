@@ -41,7 +41,10 @@ def clean_html(source: str) -> str:
     source = re.sub(r"(?i)\s+on[a-z]+\s*=\s*(?:\"[^\"]*\"|'[^']*'|[^\s>]+)", "", source)
     source = re.sub(r"(?i)(href|src|action)\s*=\s*([\"'])\s*javascript:[\s\S]*?\2", r'\1="#"', source)
     source = re.sub(r"(?is)<object\b[^>]*>.*?</object\s*>", "", source)
-    return source.strip()
+    # WXR content frequently contains whitespace-only lines around legacy
+    # shortcodes. Normalize line endings and trailing horizontal whitespace so
+    # generated HTML passes Git's whitespace checks without changing text.
+    return "\n".join(line.rstrip(" \t\r") for line in source.strip().splitlines())
 
 
 def convert_wordpress_shortcodes(source: str, media_by_id: dict[str, dict]) -> str:
@@ -60,8 +63,8 @@ def convert_wordpress_shortcodes(source: str, media_by_id: dict[str, dict]) -> s
                 cards.append('<li>Gallery attachment ' + html.escape(attachment_id.strip()) + ' is not present in the export.</li>')
                 continue
             label = media.get("alt") or media.get("title") or ("Attachment " + attachment_id.strip())
-            cards.append('<li><strong>' + html.escape(label) + '</strong> — image binary not included in export; <a href="' + html.escape(media["url"], quote=True) + '">original media URL</a></li>')
-        return '<section class="wp-gallery"><h2>Original WordPress gallery</h2><p>Gallery image files were referenced by the export but could not be retrieved from the private source site.</p><ul>' + "".join(cards) + '</ul></section>'
+            cards.append('<li><strong>' + html.escape(label) + '</strong> — attachment status is shown in the media archive; <a href="' + html.escape(media["url"], quote=True) + '">original media URL</a></li>')
+        return '<section class="wp-gallery"><h2>Original WordPress gallery</h2><p>Original attachment references are retained. Locally verified image files are rendered by the site build when available.</p><ul>' + "".join(cards) + '</ul></section>'
 
     source = re.sub(r"(?is)\[gallery\b([^\]]*)\]", gallery, source)
 

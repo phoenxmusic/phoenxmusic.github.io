@@ -1,0 +1,12 @@
+{
+  "source": "content/wordpress/media.json",
+  "destination": "assets/wordpress-media",
+  "total_records": 102,
+  "results": {
+    "downloaded": 0,
+    "already_valid": 102,
+    "failed": 0
+  },
+  "all_assets_verified": true,
+  "failures": []
+}

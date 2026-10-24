@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://phoenxmusic.github.io/sitemap.xml
