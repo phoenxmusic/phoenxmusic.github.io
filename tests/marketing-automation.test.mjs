@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
-import { mkdir, readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { generateFeed } from '../scripts/generate-feed.mjs';
 import { generateMarketingDrafts, parseCsv } from '../scripts/marketing-drafts.mjs';
 
@@ -48,6 +48,117 @@ test('marketing dry-run creates evidence-linked drafts but holds uncleared right
 });
 
 test('marketing queue parser rejects malformed CSV rows', () => {
-  assert.throws(() => parseCsv('id,title\nonly-one-field'), /expected 2 columns/);
-  assert.throws(() => parseCsv('id,title\n"unterminated,value'), /unterminated quoted field/);
+  const headers = 'id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status';
+  assert.throws(() => parseCsv(`${headers}\nitem-1,release-spotlight`), /expected 8 columns/);
+  assert.throws(() => parseCsv(`${headers}\n"unterminated,value`), /unterminated quoted field/);
+  assert.throws(() => parseCsv('id,id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status'), /duplicate column names/);
+  assert.throws(() => parseCsv('id,title\nitem-1,Title'), /missing required columns/);
+});
+
+test('marketing generator rejects unsafe and duplicate queue ids before creating drafts', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-id-root-'));
+  const out = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-id-out-'));
+  try {
+    await mkdir(path.join(root, 'content', 'marketing'), { recursive: true });
+    const header = 'id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status';
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), `${header}\n../escape,release-spotlight,sample,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved\n`);
+    await assert.rejects(generateMarketingDrafts({ rootDir: root, outputDir: out }), /id must be a lowercase kebab-case slug/);
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), `${header}\nitem-1,release-spotlight,sample,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved\nitem-1,release-spotlight,sample,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved\n`);
+    await assert.rejects(generateMarketingDrafts({ rootDir: root, outputDir: out }), /duplicate id item-1/);
+    await assert.rejects(readFile(path.join(out, 'drafts', 'item-1.json'), 'utf8'), { code: 'ENOENT' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(out, { recursive: true, force: true });
+  }
+});
+
+test('marketing generator holds evidence symlinks that resolve outside the repository', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-link-root-'));
+  const outside = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-link-outside-'));
+  const out = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-link-drafts-'));
+  try {
+    await mkdir(path.join(root, 'content', 'marketing'), { recursive: true });
+    await mkdir(path.join(root, 'content', 'releases'), { recursive: true });
+    const outsideSource = path.join(outside, 'outside.md');
+    await writeFile(outsideSource, '---\ntitle: Outside\nyear: 2001\ntype: release\n---\n');
+    try { await symlink(outsideSource, path.join(root, 'content', 'releases', 'linked.md')); }
+    catch (error) {
+      if (['EPERM', 'EACCES', 'ENOTSUP', 'UNKNOWN'].includes(error.code)) { t.skip(`File symlinks unavailable: ${error.code}`); return; }
+      throw error;
+    }
+    const header = 'id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status';
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), `${header}\nitem-1,release-spotlight,sample,content/releases/linked.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved\n`);
+    const summary = await generateMarketingDrafts({ rootDir: root, outputDir: out });
+    const draft = JSON.parse(await readFile(path.join(out, 'drafts', 'item-1.json'), 'utf8'));
+    assert.equal(summary.held, 1);
+    assert.ok(draft.hold_reasons.includes('evidence_source_outside_repository'));
+    assert.equal(draft.source_exists, false);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+    await rm(out, { recursive: true, force: true });
+  }
+});
+
+test('marketing generator rejects an output symlink that resolves into the repository', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-output-root-'));
+  const aliasParent = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-output-alias-'));
+  const alias = path.join(aliasParent, 'repository-link');
+  try {
+    await mkdir(path.join(root, 'content', 'marketing'), { recursive: true });
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), 'id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status\nitem-1,release-spotlight,sample,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved\n');
+    try { await symlink(root, alias, 'junction'); }
+    catch (error) {
+      if (['EPERM', 'EACCES', 'ENOTSUP', 'UNKNOWN'].includes(error.code)) { t.skip(`Directory symlinks unavailable: ${error.code}`); return; }
+      throw error;
+    }
+    await assert.rejects(generateMarketingDrafts({ rootDir: root, outputDir: alias }), /Draft output must resolve outside the repository/);
+    await assert.rejects(readFile(path.join(root, 'drafts', 'item-1.json'), 'utf8'), { code: 'ENOENT' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(aliasParent, { recursive: true, force: true });
+  }
+});
+
+test('marketing generator rejects a drafts subdirectory symlink that resolves into the repository', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-nested-output-root-'));
+  const out = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-nested-output-out-'));
+  try {
+    await mkdir(path.join(root, 'content', 'marketing'), { recursive: true });
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), 'id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status\nitem-1,release-spotlight,sample,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved\n');
+    try { await symlink(root, path.join(out, 'drafts'), 'junction'); }
+    catch (error) {
+      if (['EPERM', 'EACCES', 'ENOTSUP', 'UNKNOWN'].includes(error.code)) { t.skip(`Directory symlinks unavailable: ${error.code}`); return; }
+      throw error;
+    }
+    await assert.rejects(generateMarketingDrafts({ rootDir: root, outputDir: out }), /Draft output directory must resolve inside the external output directory/);
+    await assert.rejects(readFile(path.join(root, 'drafts', 'item-1.json'), 'utf8'), { code: 'ENOENT' });
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(out, { recursive: true, force: true });
+  }
+});
+
+test('marketing generator refuses to overwrite a symlinked draft file', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-file-link-root-'));
+  const out = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-file-link-out-'));
+  const outside = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-file-link-target-'));
+  try {
+    await mkdir(path.join(root, 'content', 'marketing'), { recursive: true });
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), 'id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status\nitem-1,release-spotlight,sample,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved\n');
+    await mkdir(path.join(out, 'drafts'), { recursive: true });
+    const protectedFile = path.join(outside, 'protected.txt');
+    await writeFile(protectedFile, 'must remain unchanged');
+    try { await symlink(protectedFile, path.join(out, 'drafts', 'item-1.json')); }
+    catch (error) {
+      if (['EPERM', 'EACCES', 'ENOTSUP', 'UNKNOWN'].includes(error.code)) { t.skip(`File symlinks unavailable: ${error.code}`); return; }
+      throw error;
+    }
+    await assert.rejects(generateMarketingDrafts({ rootDir: root, outputDir: out }), /Refusing unsafe pre-existing draft output path/);
+    assert.equal(await readFile(protectedFile, 'utf8'), 'must remain unchanged');
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(out, { recursive: true, force: true });
+    await rm(outside, { recursive: true, force: true });
+  }
 });
