@@ -57,3 +57,27 @@ test('marketing queue parser rejects malformed CSV rows', () => {
   assert.throws(() => parseCsv('id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status\nitem-1,theme,slug,source,unknown,https://example.com/,website,not_approved\nitem-1,theme,slug,source,unknown,https://example.com/,website,not_approved'), /duplicate id item-1/);
   assert.throws(() => parseCsv('id,title\nitem-1,Title'), /missing required column: theme/);
 });
+
+test('marketing draft generation applies a default reuse cooldown and holds duplicate destinations', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-cooldown-root-'));
+  const out = await mkdtemp(path.join(os.tmpdir(), 'phoenx-marketing-cooldown-out-'));
+  try {
+    await mkdir(path.join(root, 'content', 'marketing'), { recursive: true });
+    await mkdir(path.join(root, 'content', 'releases'), { recursive: true });
+    const header = 'id,theme,catalogue_id_or_slug,draft_brief,evidence_source,rights_status,target_url,channel,approval_status,last_used,cooldown_until,notes';
+    const row = (id, lastUsed = '') => `${id},release-spotlight,sample,brief,content/releases/sample.md,cleared,https://phoenxmusic.github.io/releases/sample/,website,approved,${lastUsed},,`;
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), `${header}\n${row('item-1', '2026-10-20')}\n${row('item-2')}`);
+    await writeFile(path.join(root, 'content', 'releases', 'sample.md'), '---\ntitle: Sample Release\nyear: 2004\ntype: Album\n---\nVerified source.');
+    const summary = await generateMarketingDrafts({ rootDir: root, outputDir: out, now: new Date('2026-10-22T00:00:00Z') });
+    const first = JSON.parse(await readFile(path.join(out, 'drafts', 'item-1.json'), 'utf8'));
+    const second = JSON.parse(await readFile(path.join(out, 'drafts', 'item-2.json'), 'utf8'));
+    assert.equal(summary.held, 2);
+    assert.ok(first.hold_reasons.includes('cooldown_active'));
+    assert.ok(first.hold_reasons.includes('duplicate_queue_destination'));
+    assert.ok(second.hold_reasons.includes('duplicate_queue_destination'));
+    assert.equal(summary.published, 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+    await rm(out, { recursive: true, force: true });
+  }
+});

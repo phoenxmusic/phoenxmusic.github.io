@@ -54,10 +54,16 @@ function parseFrontMatter(raw, source) {
   return fields;
 }
 
-export async function generateMarketingDrafts({ rootDir = root, outputDir, baseUrl = defaultBase, now = new Date() } = {}) {
+export async function generateMarketingDrafts({ rootDir = root, outputDir, baseUrl = defaultBase, now = new Date(), cooldownDays = 30 } = {}) {
   if (!outputDir) throw new Error('Pass --out DIR so generated drafts are not written into the public site tree by accident');
+  if (!Number.isFinite(cooldownDays) || cooldownDays < 0) throw new Error('cooldownDays must be a non-negative number');
   const repoRoot = path.resolve(rootDir);
   const queue = parseCsv(await readFile(path.join(repoRoot, 'content', 'marketing', 'queue.csv'), 'utf8'));
+  const destinationCounts = new Map();
+  for (const item of queue) {
+    const key = (item.target_url || '').trim();
+    if (key) destinationCounts.set(key, (destinationCounts.get(key) || 0) + 1);
+  }
   const out = path.resolve(outputDir);
   const relativeOutput = path.relative(repoRoot, out);
   const outputIsInsideRepo = relativeOutput === '' || (!path.isAbsolute(relativeOutput) && relativeOutput !== '..' && !relativeOutput.startsWith(`..${path.sep}`));
@@ -83,6 +89,7 @@ export async function generateMarketingDrafts({ rootDir = root, outputDir, baseU
       targetValid = target.protocol === 'https:' && target.origin === new URL(baseUrl).origin && !target.username && !target.password && target.pathname === `/releases/${item.catalogue_id_or_slug}/`;
     } catch {}
     if (!targetValid) holdReasons.push('target_url_not_canonical_release_route');
+    if (item.target_url && destinationCounts.get(item.target_url.trim()) > 1) holdReasons.push('duplicate_queue_destination');
     if (item.rights_status !== 'cleared') holdReasons.push('rights_not_cleared');
     if (item.approval_status !== 'approved') holdReasons.push('human_approval_missing');
     if (!sourceFields.title || !sourceFields.type) holdReasons.push('verified_title_or_type_missing');
@@ -90,6 +97,10 @@ export async function generateMarketingDrafts({ rootDir = root, outputDir, baseU
       const cooldownUntil = Date.parse(item.cooldown_until);
       if (!Number.isFinite(cooldownUntil)) holdReasons.push('cooldown_date_invalid');
       else if (cooldownUntil > now.getTime()) holdReasons.push('cooldown_active');
+    } else if (item.last_used) {
+      const lastUsed = Date.parse(item.last_used);
+      if (!Number.isFinite(lastUsed)) holdReasons.push('last_used_date_invalid');
+      else if (lastUsed + cooldownDays * 24 * 60 * 60 * 1000 > now.getTime()) holdReasons.push('cooldown_active');
     }
 
     const title = sourceFields.title || item.catalogue_id_or_slug || item.id;
@@ -116,6 +127,7 @@ export async function generateMarketingDrafts({ rootDir = root, outputDir, baseU
     '- Mode: draft-only; publishing is disabled', `- Queue records: ${summary.queue_items}`,
     `- Draft files created: ${summary.draft_files}`, `- Held for review: ${summary.held}`,
     `- Eligible for human review: ${summary.eligible_for_review}`,
+    `- Default reuse cooldown: ${cooldownDays} days when last_used is present and cooldown_until is empty`,
     '- Analytics: not measured (no Search Console/Bing/analytics connection configured)', '', '## Item status',
     ...summary.items.map(item => `- **${item.id}** — ${item.status}${item.hold_reasons.length ? `: ${item.hold_reasons.join(', ')}` : ''}`),
     '', 'No posts were published. Rights status and human approval are mandatory gates.'
