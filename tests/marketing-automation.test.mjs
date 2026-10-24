@@ -30,7 +30,7 @@ test('marketing dry-run creates evidence-linked drafts but holds uncleared right
   try {
     await mkdir(path.join(root, 'content', 'marketing'), { recursive: true });
     await mkdir(path.join(root, 'content', 'releases'), { recursive: true });
-    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), 'id,theme,catalogue_id_or_slug,draft_brief,evidence_source,rights_status,target_url,channel,approval_status,last_used,cooldown_until,notes\nitem-1,release-spotlight,sample,brief,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved,,,');
+    await writeFile(path.join(root, 'content', 'marketing', 'queue.csv'), 'id,theme,catalogue_id_or_slug,draft_brief,evidence_source,rights_status,target_url,channel,approval_status,last_used,cooldown_until,notes\nitem-1,release-spotlight,sample,brief,content/releases/sample.md,unknown,https://phoenxmusic.github.io/releases/sample/,website,not_approved,,2026-10-23T00:00:00Z,');
     await writeFile(path.join(root, 'content', 'releases', 'sample.md'), '---\ntitle: Sample Release\nyear: 2004\ntype: Album\nlanguage: en\n---\nOnly source-backed fields.');
     const summary = await generateMarketingDrafts({ rootDir: root, outputDir: out, now: new Date('2026-10-22T00:00:00Z') });
     const draft = JSON.parse(await readFile(path.join(out, 'drafts', 'item-1.json'), 'utf8'));
@@ -40,7 +40,9 @@ test('marketing dry-run creates evidence-linked drafts but holds uncleared right
     assert.equal(draft.status, 'held_for_review');
     assert.ok(draft.hold_reasons.includes('rights_not_cleared'));
     assert.ok(draft.hold_reasons.includes('human_approval_missing'));
+    assert.ok(draft.hold_reasons.includes('cooldown_active'));
     assert.equal(draft.verified_fields.year, '2004');
+    await assert.rejects(() => generateMarketingDrafts({ rootDir: root, outputDir: path.join(root, 'unsafe-output') }), /outside the repository/);
   } finally {
     await rm(root, { recursive: true, force: true });
     await rm(out, { recursive: true, force: true });
@@ -48,6 +50,10 @@ test('marketing dry-run creates evidence-linked drafts but holds uncleared right
 });
 
 test('marketing queue parser rejects malformed CSV rows', () => {
-  assert.throws(() => parseCsv('id,title\nonly-one-field'), /expected 2 columns/);
-  assert.throws(() => parseCsv('id,title\n"unterminated,value'), /unterminated quoted field/);
+  const header = 'id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status';
+  assert.throws(() => parseCsv(`${header}\nonly-one-field`), /expected 8 columns/);
+  assert.throws(() => parseCsv(`${header}\n"unterminated,value`), /unterminated quoted field/);
+  assert.throws(() => parseCsv('id,id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status\nitem-1,item-1,theme,slug,source,unknown,https://example.com/,website,not_approved'), /duplicate column names/);
+  assert.throws(() => parseCsv('id,theme,catalogue_id_or_slug,evidence_source,rights_status,target_url,channel,approval_status\nitem-1,theme,slug,source,unknown,https://example.com/,website,not_approved\nitem-1,theme,slug,source,unknown,https://example.com/,website,not_approved'), /duplicate id item-1/);
+  assert.throws(() => parseCsv('id,title\nitem-1,Title'), /missing required column: theme/);
 });

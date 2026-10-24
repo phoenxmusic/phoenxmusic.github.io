@@ -25,11 +25,22 @@ export function parseCsv(text) {
   const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(line => line.trim());
   if (!lines.length) throw new Error('Marketing queue is empty');
   const headers = parseCsvLine(lines[0]);
-  return lines.slice(1).map((line, index) => {
+  if (new Set(headers).size !== headers.length) throw new Error('Marketing queue has duplicate column names');
+  for (const required of ['id', 'theme', 'catalogue_id_or_slug', 'evidence_source', 'rights_status', 'target_url', 'channel', 'approval_status']) {
+    if (!headers.includes(required)) throw new Error(`Marketing queue is missing required column: ${required}`);
+  }
+  const rows = lines.slice(1).map((line, index) => {
     const values = parseCsvLine(line);
     if (values.length !== headers.length) throw new Error(`Marketing queue line ${index + 2}: expected ${headers.length} columns, got ${values.length}`);
     return Object.fromEntries(headers.map((header, i) => [header, values[i]]));
   });
+  const seenIds = new Set();
+  for (const [index, row] of rows.entries()) {
+    if (!row.id.trim()) throw new Error(`Marketing queue line ${index + 2}: id must not be empty`);
+    if (seenIds.has(row.id)) throw new Error(`Marketing queue line ${index + 2}: duplicate id ${row.id}`);
+    seenIds.add(row.id);
+  }
+  return rows;
 }
 
 function parseFrontMatter(raw, source) {
@@ -48,7 +59,9 @@ export async function generateMarketingDrafts({ rootDir = root, outputDir, baseU
   const repoRoot = path.resolve(rootDir);
   const queue = parseCsv(await readFile(path.join(repoRoot, 'content', 'marketing', 'queue.csv'), 'utf8'));
   const out = path.resolve(outputDir);
-  if (out === repoRoot || out.startsWith(repoRoot + path.sep)) throw new Error('Draft output must be outside the repository/public site tree');
+  const relativeOutput = path.relative(repoRoot, out);
+  const outputIsInsideRepo = relativeOutput === '' || (!path.isAbsolute(relativeOutput) && relativeOutput !== '..' && !relativeOutput.startsWith(`..${path.sep}`));
+  if (outputIsInsideRepo) throw new Error('Draft output must be outside the repository/public site tree');
   const draftsDir = path.join(out, 'drafts');
   await mkdir(draftsDir, { recursive: true });
   const summary = { generated_at: now.toISOString(), mode: 'draft-only', publishing_enabled: false, queue_items: queue.length, draft_files: 0, held: 0, eligible_for_review: 0, published: 0, analytics: 'not_measured', items: [] };
@@ -73,6 +86,11 @@ export async function generateMarketingDrafts({ rootDir = root, outputDir, baseU
     if (item.rights_status !== 'cleared') holdReasons.push('rights_not_cleared');
     if (item.approval_status !== 'approved') holdReasons.push('human_approval_missing');
     if (!sourceFields.title || !sourceFields.type) holdReasons.push('verified_title_or_type_missing');
+    if (item.cooldown_until) {
+      const cooldownUntil = Date.parse(item.cooldown_until);
+      if (!Number.isFinite(cooldownUntil)) holdReasons.push('cooldown_date_invalid');
+      else if (cooldownUntil > now.getTime()) holdReasons.push('cooldown_active');
+    }
 
     const title = sourceFields.title || item.catalogue_id_or_slug || item.id;
     const year = sourceFields.year && !['unknown', 'null', '~'].includes(sourceFields.year.toLowerCase()) ? sourceFields.year : 'year not verified';
