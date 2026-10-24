@@ -66,6 +66,30 @@ test('supports summary, consistency-check, and create-only report modes', async 
   assert.notEqual(overwrite.status, 0, 'report creation must not overwrite an existing file');
 });
 
+test('accepts a current audit report checked out with Windows CRLF line endings', async t => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-crlf-'));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const scriptsDir = path.join(temp, 'scripts');
+  const contentDir = path.join(temp, 'content', 'wordpress');
+  await mkdir(scriptsDir, { recursive: true });
+  await mkdir(contentDir, { recursive: true });
+  const scriptCopy = path.join(scriptsDir, 'audit-media-inventory.mjs');
+  await writeFile(scriptCopy, await readFile(script, 'utf8'));
+  await writeFile(path.join(contentDir, 'media.json'), JSON.stringify([
+    { id: 1, title: 'Fixture image', url: 'https://example.com/image.jpg', date: '2020-01-01', mime_type: 'image/jpeg', alt: 'Fixture', attached_file: 'image.jpg', status: 'publish' },
+  ]));
+
+  const expected = path.join(temp, 'expected-report.json');
+  const create = spawnSync(process.execPath, [scriptCopy, '--write', expected], { encoding: 'utf8', timeout: 10000 });
+  assert.equal(create.status, 0, create.stderr);
+  const report = await readFile(expected, 'utf8');
+  await writeFile(path.join(contentDir, 'media-audit.json'), report.replace(/\n/g, '\r\n'));
+
+  const check = spawnSync(process.execPath, [scriptCopy, '--check'], { encoding: 'utf8', timeout: 10000 });
+  assert.equal(check.status, 0, check.stderr);
+  assert.match(check.stdout, /MEDIA AUDIT PASSED/);
+});
+
 test('fails clearly when the attachment register contains malformed records', async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'phoenx-media-audit-test-'));
   t.after(() => rm(temp, { recursive: true, force: true }));
