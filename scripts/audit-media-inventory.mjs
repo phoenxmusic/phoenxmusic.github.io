@@ -133,7 +133,9 @@ const json = `${JSON.stringify(report, null, 2)}\n`;
 if (checkReport) {
   const reportPath = path.join(root, 'content', 'wordpress', 'media-audit.json');
   const saved = await readFile(reportPath, 'utf8');
-  if (saved !== json) {
+  // The report is committed as UTF-8 JSON, but Windows checkouts may use CRLF.
+  // Treat line-ending differences as formatting, not stale audit content.
+  if (saved.replace(/\r\n/g, '\n') !== json) {
     console.error('MEDIA AUDIT STALE: run node scripts/audit-media-inventory.mjs --write <new-report.json> and review/update content/wordpress/media-audit.json.');
     process.exit(1);
   }
