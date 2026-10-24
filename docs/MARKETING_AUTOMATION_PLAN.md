@@ -1,6 +1,6 @@
 # PhoenX 24/7 discovery, SEO, and marketing automation
 
-**Status:** local SEO/feed build, draft-only engine, and social metadata checks are implemented; GitHub Actions validation passed on the review branch. Recurring schedules still require the workflows to be on the default branch. Publishing integrations are not connected.
+**Status:** local SEO/feed build, draft-only engine, social metadata checks, queue validation, cooldown enforcement, and duplicate-destination holds are implemented. GitHub Actions validation passed on the review branch at `1d75d24`. Recurring schedules still require the workflows to be on the default branch. Publishing integrations are not connected.
 **Cost target:** $0, using repository automation, static-site tooling, public platform features, and existing accounts.
 **Canonical destination:** `https://phoenxmusic.github.io/` while the review version is evaluated.
 **Safety rule:** this plan does not authorize a production deploy, account connection, or public post.
@@ -28,6 +28,8 @@ Continuously improve the chance that listeners discover PhoenX music, videos, re
 - Read the catalogue, imported public posts/pages, and approved marketing queue as source material.
 - Generate draft variants for: release spotlights, chronology, “start here” listening paths, video highlights, Greek/English discovery guides, and sourced archive stories.
 - Every draft records source record(s), factual claims, target canonical URL, rights status, channel format, language, creation date, approval status, and cooldown.
+- The current queue validator rejects missing required columns, duplicate column names, empty/duplicate IDs, malformed rows, unsafe draft output locations, and malformed evidence/target records. Repeated target URLs are held for review.
+- A 30-day default reuse cooldown applies when `last_used` is present and `cooldown_until` is empty. A valid explicit `cooldown_until` takes precedence; invalid dates are held rather than silently treated as expired.
 - Reject or hold drafts that depend on unknown facts, unmatched video IDs, unavailable media, unverified credits, or uncleared artwork/lyrics.
 - Maintain English and Greek variants only when a reliable translation can be reviewed; do not silently change titles or lyrics.
 - Reuse evergreen material only after its cooldown, with a materially different audience angle and destination-specific copy.
@@ -80,17 +82,17 @@ After publishing is explicitly enabled, the first live cadence should be conserv
 
 ## Current blockers / facts
 
-- The current review branch has a large uncommitted set of imported/rebuilt site files and a new WordPress export. Preserve these changes; do not reset or blanket-commit them while implementing the marketing layer.
+- Keep the review branch separate from `main`; the current marketing hardening changes are committed and pushed on `feat/github-pages-flexibility-test`. Do not merge or deploy this review branch without separate production approval.
 - The repository already has `content/marketing/queue.csv`, but it is planning-only and its items are not approved for publication.
 - Local build validation generates `sitemap.xml`, `robots.txt`, and `rss.xml`; the current verified local build produced 145 canonical routes and 50 dated, published RSS items. This does not prove search-engine indexing or traffic growth.
 - The SEO build supplies `twitter:card`, `twitter:title`, `twitter:description`, and a default `og:image` on all 145 public HTML routes. The metadata audit confirms 145/145 have titles, descriptions, canonicals, and social preview fields, with zero duplicate/invalid canonicals and zero Open Graph URL mismatches.
 - The default social preview is an original typographic PhoenX archive card (`assets/phoenx-social-card.png`, 1200×630) with an editable SVG source and a local Pillow-based regeneration helper. It does not reuse or imply clearance for any specific release artwork; existing page-specific `og:image` values are preserved.
 - The local draft-only dry run produced nine candidate files, with all nine held because rights clearance and human approval are not established. No campaign item was published.
-- `.github/workflows/seo-health.yml` and `.github/workflows/marketing-drafts.yml` provide read-only health checks and artifact-based draft review. The SEO and legacy-monitor workflows passed on commit `e192280`; the draft workflow passed on commit `06e4196`. Recurring schedules run from the default branch; do not merge this review branch without separate production approval.
+- `.github/workflows/seo-health.yml` and `.github/workflows/marketing-drafts.yml` provide read-only health checks and artifact-based draft review. SEO health, marketing draft generation, the legacy monitor, and the banned-term guard all passed on commit `1d75d24`; see the [SEO run](https://github.com/phoenxmusic/phoenxmusic.github.io/actions/runs/40100937671), [draft run](https://github.com/phoenxmusic/phoenxmusic.github.io/actions/runs/40100937784), [legacy monitor](https://github.com/phoenxmusic/phoenxmusic.github.io/actions/runs/40100937718), and [branding guard](https://github.com/phoenxmusic/phoenxmusic.github.io/actions/runs/40100937726). The draft package is an artifact retained for 14 days. Recurring schedules run from the default branch; do not merge this review branch without separate production approval.
 - The legacy monitor compares two complete build snapshots and runs the branding check on review branches. Its live-site probe is now restricted to scheduled/manual runs on `main`, so un-deployed review changes are not incorrectly reported as production failures. No monitor guard was removed; the production URL probe remains active on `main`.
 - The site is a review version; do not treat it as the approved production destination until the owner reviews and authorizes deployment.
 - The PhoenX Music export's 102 image binaries have been recovered locally and signature-verified, but rights evidence remains incomplete. Do not make artwork-dependent promotion eligible until the relevant asset's usage rights are cleared; this does not recover audio/video files or verify the separate Meniossymeon WordPress archive.
-- No social publishing integration, search-console data connection, or owner-approved publication cadence is evidenced in this repository.
+- No social publishing integration, search-console data connection, or owner-approved publication cadence is evidenced in this repository. The public site deployment workflow remains on `main`; this review branch has not been deployed. Local working-tree cleanliness should be checked before future changes; do not assume generated local files are committed.
 
 ## Definition of done
 
