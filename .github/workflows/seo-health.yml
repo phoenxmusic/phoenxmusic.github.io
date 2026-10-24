@@ -5,7 +5,7 @@ on:
     - cron: '17 */6 * * *'
   workflow_dispatch:
   push:
-    branches: [main, feat/github-pages-flexibility-test]
+    branches: [main, feat/github-pages-flexibility-test, feat/marketing-draft-hardening]
 
 permissions:
   contents: read

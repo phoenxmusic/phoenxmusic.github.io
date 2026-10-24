@@ -5,7 +5,7 @@ on:
     - cron: '23 8 * * *'
   workflow_dispatch:
   push:
-    branches: [feat/github-pages-flexibility-test]
+    branches: [feat/github-pages-flexibility-test, feat/marketing-draft-hardening]
     paths:
       - '.github/workflows/marketing-drafts.yml'
       - 'content/marketing/queue.csv'
