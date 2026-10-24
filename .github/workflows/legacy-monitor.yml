@@ -5,7 +5,7 @@ on:
     - cron: '17 9 1 * *'
   workflow_dispatch:
   push:
-    branches: [feat/github-pages-flexibility-test]
+    branches: [main, feat/github-pages-flexibility-test]
   pull_request:
     branches: [main]
 
@@ -38,4 +38,8 @@ jobs:
           diff -u /tmp/phoenx-build-first.sha256 /tmp/phoenx-build-second.sha256
           python scripts/check_banned_terms.py
       - name: Check live homepage, release pages, and imported archive
+        # A feature branch is a review build, not the live GitHub Pages site.
+        # Check production only from scheduled/manual runs explicitly on main;
+        # a push can race the separate Pages build-and-publish workflow.
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: node scripts/check-live-site.mjs
